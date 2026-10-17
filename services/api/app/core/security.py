@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
@@ -49,15 +50,21 @@ def create_refresh_token(subject: str) -> str:
     )
 
 
+def email_fingerprint(email: str) -> str:
+    """Short one-way digest of an address. JWT payloads are readable by anyone
+    holding the link, so tokens carry this rather than the address itself."""
+    return hashlib.sha256(email.strip().lower().encode()).hexdigest()[:16]
+
+
 def create_verify_token(subject: str, email: str) -> str:
     # Single-purpose: get_current_user rejects anything but ACCESS, so this
-    # cannot be used to log in. The email claim voids the link if the address
+    # cannot be used to log in. The fingerprint voids the link if the address
     # changes before it is clicked.
     return _create_token(
         subject,
         VERIFY,
         timedelta(hours=settings.verify_token_ttl_hours),
-        email=email,
+        eh=email_fingerprint(email),
     )
 
 

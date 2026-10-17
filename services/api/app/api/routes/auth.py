@@ -14,6 +14,7 @@ from app.core.security import (
     create_refresh_token,
     create_verify_token,
     decode_token,
+    email_fingerprint,
     hash_password,
     verify_password,
 )
@@ -29,10 +30,12 @@ logger = logging.getLogger("greatskills.auth")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-async def _send_verification(user: User) -> None:
+async def _send_verification(user: User, full_name: str | None = None) -> None:
     # Callers have already committed, so a mail failure must not fail the request.
     try:
-        await send_verification_email(user.email, create_verify_token(str(user.id), user.email))
+        await send_verification_email(
+            user.email, create_verify_token(str(user.id), user.email), full_name
+        )
     except Exception:
         logger.exception("Verification email failed for user %s", user.id)
 
@@ -69,7 +72,7 @@ async def register(payload: RegisterIn, db: DbSession):
     await db.commit()
     await db.refresh(user)
 
-    await _send_verification(user)
+    await _send_verification(user, payload.full_name)
     return _tokens(user)
 
 
@@ -108,7 +111,7 @@ async def verify_email(payload: VerifyEmailIn, db: DbSession):
     except (jwt.PyJWTError, ValueError, KeyError):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired")
 
-    if not user or not user.is_active or user.email != data.get("email"):
+    if not user or not user.is_active or email_fingerprint(user.email) != data.get("eh"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired")
     if not user.is_verified:
         user.is_verified = True
@@ -117,9 +120,10 @@ async def verify_email(payload: VerifyEmailIn, db: DbSession):
 
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
-async def resend_verification(current: CurrentUser):
+async def resend_verification(current: CurrentUser, db: DbSession):
     if not current.is_verified:
-        await _send_verification(current)
+        name = await db.scalar(select(Profile.full_name).where(Profile.user_id == current.id))
+        await _send_verification(current, name)
 
 
 @router.get("/me", response_model=MeOut)

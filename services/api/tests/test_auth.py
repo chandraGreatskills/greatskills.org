@@ -146,7 +146,7 @@ async def _register(client, monkeypatch, email="ver@example.com"):
 
     sent = []
 
-    async def fake_send(to, token):
+    async def fake_send(to, token, full_name=None):
         sent.append((to, token))
 
     monkeypatch.setattr(auth_routes, "send_verification_email", fake_send)
@@ -220,7 +220,7 @@ async def test_smtp_send_in_production(monkeypatch):
             delivered.append(("login", user))
 
         def send_message(self, msg):
-            delivered.append(("send", msg["To"], msg["From"], msg.get_content()))
+            delivered.append(("send", msg["To"], msg["From"], msg))
 
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "smtp_host", "smtp.example.com")
@@ -228,9 +228,30 @@ async def test_smtp_send_in_production(monkeypatch):
     monkeypatch.setattr(settings, "smtp_password", "x")
     monkeypatch.setattr(email_service.smtplib, "SMTP_SSL", FakeSMTP)
 
-    await email_service.send_verification_email("member@example.com", "TOKEN123")
+    await email_service.send_verification_email(
+        "member@example.com", "TOKEN123", "<b>Ana</b> Lee"
+    )
 
     assert delivered[0] == ("connect", "smtp.example.com", 465)
-    kind, to, sender, body = delivered[-1]
+    kind, to, sender, msg = delivered[-1]
     assert (kind, to, sender) == ("send", "member@example.com", "no-reply@example.com")
-    assert "https://achievers.greatskills.org/verify?token=TOKEN123" in body
+    link = "https://achievers.greatskills.org/verify?token=TOKEN123"
+    text = msg.get_body(preferencelist=("plain",)).get_content()
+    html = msg.get_body(preferencelist=("html",)).get_content()
+    assert link in text and "Hi <b>Ana</b>," in text
+    assert link in html and "Confirm my email" in html
+    # names are member-supplied: must be escaped in the HTML part
+    assert "<b>" not in html
+
+
+def test_verify_token_does_not_expose_email():
+    import base64
+    import json
+
+    from app.core.security import create_verify_token
+
+    token = create_verify_token("user-id", "Private@Example.com")
+    payload = token.split(".")[1]
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    assert "email" not in claims
+    assert "example.com" not in json.dumps(claims).lower()

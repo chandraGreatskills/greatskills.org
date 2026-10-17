@@ -24,7 +24,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
-scripts/deploy.env
 
 # Uploads (local storage mode)
 uploads/
