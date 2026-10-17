@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #012652;
+  --green: #6fab2f;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #606162;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Lenis smooth scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-[1520px] px-5 sm:px-8 lg:px-10;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold tracking-wide transition-all duration-300;
+  }
+  .btn-green {
+    @apply btn bg-green-shine text-white shadow-glow hover:-translate-y-0.5 hover:brightness-105;
+  }
+  .btn-navy {
+    @apply btn bg-navy text-white hover:-translate-y-0.5 hover:bg-navy-600;
+  }
+  .btn-outline {
+    @apply btn border-2 border-navy/15 bg-white/70 text-navy backdrop-blur hover:border-green hover:text-green;
+  }
+  .eyebrow {
+    @apply mb-3 inline-flex items-center gap-2 rounded-full bg-green/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-green-deep;
+  }
+  .h-serif {
+    @apply font-serif font-semibold text-navy;
+  }
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, #6fab2f 0%, #359706 60%, #012652 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

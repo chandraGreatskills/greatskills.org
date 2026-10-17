@@ -1,0 +1,53 @@
+# Brings up Postgres + Redis + the API with one command:
+#   docker compose -f infra/docker-compose.yml up --build
+name: greatskills
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: greatskills
+      POSTGRES_PASSWORD: greatskills_dev_pw
+      POSTGRES_DB: greatskills
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U greatskills"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../services/api
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://greatskills:greatskills_dev_pw@db:5432/greatskills
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-secret-in-prod}
+      WEB_CONCURRENCY: 4
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:
