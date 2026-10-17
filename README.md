@@ -8,7 +8,7 @@ GreatSkills/
     web/        Marketing site (React + Vite + Tailwind)      → greatskills.org
     portal/     Member portal SPA (React + Vite + Router)     → achievers.greatskills.org
   services/
-    api/        FastAPI + PostgreSQL backend                  → api.greatskills.org
+    api/        FastAPI + PostgreSQL backend                  → achievers.greatskills.org/api
   infra/
     docker-compose.yml   Postgres + Redis + API, one command
 ```
