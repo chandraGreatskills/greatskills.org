@@ -126,3 +126,16 @@ async def test_opportunities_flow(client):
     listing = await client.get(f"{PREFIX}/opportunities")
     assert listing.status_code == 200
     assert any(o["title"] == "Junior Data Scientist" for o in listing.json())
+
+
+@pytest.mark.asyncio
+async def test_register_succeeds_in_production_without_email_backend(client, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "environment", "production")
+    r = await client.post(
+        f"{PREFIX}/auth/register",
+        json={"email": "prod@example.com", "password": "s3cret-pass", "full_name": "Prod User"},
+    )
+    assert r.status_code == 201
+    assert "access_token" in r.json()

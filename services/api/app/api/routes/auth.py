@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 import jwt
@@ -20,6 +21,8 @@ from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenPair
 from app.schemas.user import MeOut
 from app.services.email import send_verification_email
 from app.utils import unique_handle
+
+logger = logging.getLogger("greatskills.auth")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,8 +59,12 @@ async def register(payload: RegisterIn, db: DbSession):
     await db.commit()
     await db.refresh(user)
 
-    # dev: prints a verification link to the console
-    await send_verification_email(user.email, create_access_token(str(user.id)))
+    # dev: prints a verification link to the console. The account is already
+    # committed, so a mail failure must not fail the request.
+    try:
+        await send_verification_email(user.email, create_access_token(str(user.id)))
+    except Exception:
+        logger.exception("Verification email failed for user %s", user.id)
     return _tokens(user)
 
 

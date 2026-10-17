@@ -13,8 +13,10 @@ async def send_email(to: str, subject: str, body: str) -> None:
         logger.info("EMAIL -> %s | %s\n%s", to, subject, body)
         print(f"\n[DEV EMAIL] to={to}\nsubject={subject}\n{body}\n")
         return
-    # production: integrate SMTP / SendGrid / Postmark here
-    raise NotImplementedError("Configure a production email backend")
+    # No production backend yet. Log and skip rather than raise: callers such as
+    # registration have already committed their work, and a raise here turned a
+    # successful sign-up into a 500.
+    logger.warning("Email backend not configured; not sent: %s", subject)
 
 
 async def send_verification_email(to: str, token: str) -> None:
