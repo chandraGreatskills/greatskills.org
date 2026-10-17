@@ -65,7 +65,7 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
     # Loopback only. nginx terminates TLS and proxies here.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8010:8000"
     volumes:
       - uploads:/app/uploads
     depends_on:
