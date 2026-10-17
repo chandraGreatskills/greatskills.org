@@ -63,6 +63,12 @@ services:
       # than silently signing tokens with a value that is public on GitHub.
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in infra/.env.prod}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      # Outgoing mail. Optional: with SMTP_HOST empty the API logs and skips.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     # Loopback only. nginx terminates TLS and proxies here.
     ports:
       - "127.0.0.1:8010:8000"

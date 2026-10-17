@@ -21,3 +21,7 @@ class TokenPair(BaseModel):
 
 class RefreshIn(BaseModel):
     refresh_token: str
+
+
+class VerifyEmailIn(BaseModel):
+    token: str

@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_ttl_min: int = 30
     refresh_token_ttl_days: int = 30
+    verify_token_ttl_hours: int = 48
+
+    # Outgoing email (SMTP over SSL). Empty host = not configured: production
+    # logs and skips, development prints to the console.
+    smtp_host: str = ""
+    smtp_port: int = 465
+    smtp_user: str = ""
+    smtp_password: str = ""
+    mail_from: str = ""
+
+    # Where links in emails point.
+    portal_url: str = "https://achievers.greatskills.org"
 
     # CORS origins allowed to call the API (portal + marketing site)
     cors_origins: list[str] = [
