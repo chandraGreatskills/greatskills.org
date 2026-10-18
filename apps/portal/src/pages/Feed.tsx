@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom'
 import { FiUsers, FiBriefcase, FiUserCheck, FiArrowRight } from 'react-icons/fi'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
-import type { Opportunity, Profile } from '../lib/types'
+import type { Opportunity, ProfileCard } from '../lib/types'
 
 export default function Feed() {
   const { me } = useAuth()
   const [pending, setPending] = useState(0)
   const [opps, setOpps] = useState<Opportunity[]>([])
-  const [members, setMembers] = useState<Profile[]>([])
+  const [members, setMembers] = useState<ProfileCard[]>([])
 
   useEffect(() => {
     api.get<{ length: number }[]>('/connections/pending').then((r) => setPending(r.length)).catch(() => {})
     api.get<Opportunity[]>('/opportunities?limit=4').then(setOpps).catch(() => {})
-    api.get<Profile[]>('/members?limit=4').then(setMembers).catch(() => {})
+    api.get<ProfileCard[]>('/members?limit=4').then(setMembers).catch(() => {})
   }, [])
 
   const p = me?.profile

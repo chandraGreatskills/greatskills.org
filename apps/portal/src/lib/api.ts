@@ -78,6 +78,18 @@ export const api = {
   patch: <T>(p: string, body: unknown) =>
     raw(p, { method: 'PATCH', body: JSON.stringify(body) }).then((r) => handle<T>(r)),
   del: (p: string) => raw(p, { method: 'DELETE' }).then((r) => handle<void>(r)),
+  // Fetch a private file with the member's token and hand it to the browser
+  // as a download. A plain link can't carry the token.
+  download: async (p: string, filename: string) => {
+    const res = await raw(p)
+    if (!res.ok) await handle<void>(res)
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  },
   upload: <T>(p: string, file: File) => {
     const fd = new FormData()
     fd.append('file', file)

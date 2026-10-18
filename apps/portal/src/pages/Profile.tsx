@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck } from 'react-icons/fi'
-import { api, fileUrl } from '../lib/api'
+import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
 
@@ -39,13 +39,30 @@ export default function Profile() {
     refreshMe()
   }
 
+  // The API checks file contents, so tell the member why a file was refused.
+  const explain = (err: unknown) =>
+    window.alert(err instanceof ApiError ? err.message : 'Upload failed')
+
   const uploadAvatar = async (file: File) => {
-    const updated = await api.upload<ProfileT>('/profiles/me/avatar', file)
-    setProfile(updated)
-    refreshMe()
+    try {
+      const updated = await api.upload<ProfileT>('/profiles/me/avatar', file)
+      setProfile(updated)
+      refreshMe()
+    } catch (err) {
+      explain(err)
+    }
   }
   const uploadResume = async (file: File) => {
-    await api.upload('/profiles/me/resume', file)
+    try {
+      await api.upload('/profiles/me/resume', file)
+      load()
+    } catch (err) {
+      explain(err)
+    }
+  }
+  const removeResume = async (id: string, filename: string) => {
+    if (!window.confirm(`Delete ${filename}? This removes the file for good.`)) return
+    await api.del(`/profiles/me/resumes/${id}`)
     load()
   }
 
@@ -111,14 +128,24 @@ export default function Profile() {
             {profile.resumes.map((r) => (
               <li key={r.id} className="flex items-center gap-2 text-sm text-navy">
                 <FiFileText className="h-4 w-4 text-green-deep" />
-                <a href={fileUrl(r.file_url) ?? '#'} className="truncate hover:underline">
+                <button
+                  onClick={() => api.download(`/profiles/me/resumes/${r.id}/file`, r.filename)}
+                  className="truncate text-left hover:underline"
+                >
                   {r.filename}
-                </a>
+                </button>
                 {r.is_primary && (
                   <span className="rounded bg-green/10 px-1.5 text-xs text-green-deep">
                     primary
                   </span>
                 )}
+                <button
+                  onClick={() => removeResume(r.id, r.filename)}
+                  className="ml-auto text-xs text-ink hover:text-red-600"
+                  aria-label={`Delete ${r.filename}`}
+                >
+                  Delete
+                </button>
               </li>
             ))}
           </ul>
@@ -131,7 +158,7 @@ export default function Profile() {
           <input
             ref={resumeInput}
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,.docx"
             hidden
             onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])}
           />

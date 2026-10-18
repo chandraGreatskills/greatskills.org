@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FiSearch, FiUserPlus, FiMapPin } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
-import type { Profile } from '../lib/types'
+import type { ProfileCard } from '../lib/types'
 
 const filters = [
   { value: '', label: 'Everyone' },
@@ -14,24 +14,30 @@ const filters = [
 export default function Members() {
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
-  const [members, setMembers] = useState<Profile[]>([])
+  const [members, setMembers] = useState<ProfileCard[]>([])
+  const [notice, setNotice] = useState('')
   const [sent, setSent] = useState<Record<string, string>>({})
 
   const search = async () => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
     if (type) params.set('member_type', type)
-    setMembers(await api.get<Profile[]>(`/members?${params}`))
+    try {
+      setMembers(await api.get<ProfileCard[]>(`/members?${params}`))
+      setNotice('')
+    } catch (err) {
+      setMembers([])
+      setNotice(err instanceof ApiError ? err.message : 'Could not load members')
+    }
   }
   useEffect(() => {
     search()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
-  const connect = async (m: Profile) => {
+  const connect = async (m: ProfileCard) => {
     try {
-      // NB: connections use user ids; profile.id maps 1:1 to a member here.
-      await api.post('/connections', { addressee_id: m.id })
+      await api.post('/connections', { addressee_id: m.user_id })
       setSent((s) => ({ ...s, [m.id]: 'Request sent' }))
     } catch (err) {
       setSent((s) => ({
@@ -105,15 +111,6 @@ export default function Members() {
                 <FiMapPin className="h-3 w-3" /> {m.location}
               </p>
             )}
-            {m.skills.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {m.skills.slice(0, 3).map((s) => (
-                  <span key={s} className="rounded bg-navy-50 px-2 py-0.5 text-xs text-navy/70">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            )}
             <button
               onClick={() => connect(m)}
               disabled={!!sent[m.id]}
@@ -123,7 +120,8 @@ export default function Members() {
             </button>
           </div>
         ))}
-        {members.length === 0 && (
+        {notice && <p className="text-sm text-ink">{notice}</p>}
+        {!notice && members.length === 0 && (
           <p className="text-sm text-ink">No members match your search yet.</p>
         )}
       </div>

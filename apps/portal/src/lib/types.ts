@@ -20,9 +20,20 @@ export type Education = {
 export type Resume = {
   id: string
   filename: string
-  file_url: string
   size_bytes: number
   is_primary: boolean
+}
+
+// Directory card. user_id is what connection requests address.
+export type ProfileCard = {
+  id: string
+  user_id: string
+  handle: string
+  full_name: string
+  headline?: string | null
+  avatar_url?: string | null
+  member_type: string
+  location?: string | null
 }
 
 export type Profile = {
