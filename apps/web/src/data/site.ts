@@ -10,6 +10,10 @@ export const nav = [
 export const PORTAL_URL =
   import.meta.env.VITE_PORTAL_URL || 'http://localhost:5174'
 
+// The API is served under the portal's address in production.
+export const API_URL =
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : PORTAL_URL)
+
 export const heroBullets = [
   {
     title: 'Personalized Learning and Skilling',

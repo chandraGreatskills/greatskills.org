@@ -1,27 +1,4 @@
-import asyncio
-import os
-
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["ENVIRONMENT"] = "development"
-
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
-from app.db.base import Base, engine
-from app.main import app
-
-
-@pytest_asyncio.fixture
-async def client():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
 
 PREFIX = "/api/v1"
 

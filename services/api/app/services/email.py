@@ -23,7 +23,9 @@ def _send_smtp(msg: EmailMessage) -> None:
         smtp.send_message(msg)
 
 
-async def send_email(to: str, subject: str, text: str, html: str | None = None) -> None:
+async def send_email(
+    to: str, subject: str, text: str, html: str | None = None, reply_to: str | None = None
+) -> None:
     if settings.is_dev:
         logger.info("EMAIL -> %s | %s\n%s", to, subject, text)
         print(f"\n[DEV EMAIL] to={to}\nsubject={subject}\n{text}\n")
@@ -39,6 +41,8 @@ async def send_email(to: str, subject: str, text: str, html: str | None = None) 
     msg["From"] = settings.mail_from or settings.smtp_user
     msg["To"] = to
     msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg.set_content(text)
     if html:
         msg.add_alternative(html, subtype="html")
@@ -105,3 +109,41 @@ If you didn't sign up, ignore this email and nothing will happen.</p>
     )
 
     await send_email(to, "Confirm your email for Great Skills Achievers", text, html)
+
+
+async def send_contact_notification(inquiry) -> None:
+    """Tell the team a contact form came in. Reply-To is the sender, so
+    hitting Reply in the inbox answers them directly."""
+    if not settings.notify_to:
+        logger.warning("NOTIFY_TO not set; inquiry %s saved but nobody was emailed", inquiry.id)
+        return
+    rows = [
+        ("Name", inquiry.name),
+        ("Email", inquiry.email),
+        ("Phone", inquiry.phone),
+        ("Country", inquiry.country),
+        ("Form", inquiry.source),
+    ]
+    text = "New inquiry from greatskills.org\n\n" + "\n".join(
+        f"{k}: {v}" for k, v in rows if v
+    ) + f"\n\nMessage:\n{inquiry.message or '(none)'}\n\nReply to this email to answer them.\n"
+
+    cells = "".join(
+        f'<tr><td style="padding:4px 12px 4px 0;color:{INK};font-size:13px;">{k}</td>'
+        f'<td style="padding:4px 0;font-size:14px;color:{NAVY};">{escape(v)}</td></tr>'
+        for k, v in rows if v
+    )
+    message = escape(inquiry.message or "(none)").replace("\n", "<br>")
+    html = _layout(
+        "New inquiry",
+        f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;">{cells}</table>
+<div style="padding:14px 16px;background:#f4f6f9;border-radius:10px;font-size:14px;line-height:1.6;color:{NAVY};">{message}</div>
+<p style="margin:18px 0 0;font-size:13px;color:{INK};">Hit <strong>Reply</strong> to answer {escape(inquiry.name)} directly.</p>""",
+    )
+    await send_email(
+        settings.notify_to,
+        f"New inquiry: {inquiry.name}",
+        text,
+        html,
+        reply_to=inquiry.email,
+    )

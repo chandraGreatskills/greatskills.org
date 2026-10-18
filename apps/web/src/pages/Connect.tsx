@@ -14,6 +14,7 @@ import type { IconType } from 'react-icons'
 import PageHero from '../components/PageHero'
 import Reveal from '../components/Reveal'
 import LogoMarquee from '../components/LogoMarquee'
+import { API_URL } from '../data/site'
 
 const promises = [
   'We’re here to help you realize your dreams, personal or professional.',
@@ -196,11 +197,46 @@ function InfoCard({
   )
 }
 
+type ContactFields = { name: string; email: string; phone: string; country: string; message: string }
+
+const emptyFields: ContactFields = { name: '', email: '', phone: '', country: '', message: '' }
+
 function ContactForm() {
-  const [sent, setSent] = useState(false)
+  const [fields, setFields] = useState<ContactFields>(emptyFields)
+  const [website, setWebsite] = useState('') // honeypot, hidden from people
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [error, setError] = useState('')
   const field = 'w-full rounded-xl border border-navy/10 bg-white px-4 py-3 text-sm text-navy outline-none transition focus:border-green focus:ring-2 focus:ring-green/20'
 
-  if (sent) {
+  const set = (key: keyof ContactFields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setFields((f) => ({ ...f, [key]: e.target.value }))
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setStatus('sending')
+    try {
+      const res = await fetch(`${API_URL}/api/v1/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...fields, source: 'connect', website }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(typeof body?.detail === 'string' ? body.detail : 'Please check your details and try again.')
+      }
+      setStatus('sent')
+    } catch (err) {
+      setStatus('idle')
+      setError(
+        err instanceof TypeError
+          ? "We couldn't reach our server. Please try again, or email contact@greatskills.org."
+          : (err as Error).message,
+      )
+    }
+  }
+
+  if (status === 'sent') {
     return (
       <div className="grid h-full min-h-[320px] place-items-center rounded-3xl border border-navy/5 bg-white p-10 text-center shadow-soft">
         <div>
@@ -213,25 +249,31 @@ function ContactForm() {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        setSent(true)
-      }}
-      className="rounded-3xl border border-navy/5 bg-white p-8 shadow-soft"
-    >
+    <form onSubmit={submit} className="rounded-3xl border border-navy/5 bg-white p-8 shadow-soft">
+      {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <input required placeholder="Name" className={field} />
-        <input required type="email" placeholder="Email Address" className={field} />
-        <input placeholder="Phone Number" className={field} />
-        <input placeholder="Country" className={field} />
+        <input required maxLength={120} placeholder="Name" aria-label="Name" value={fields.name} onChange={set('name')} className={field} />
+        <input required type="email" maxLength={254} placeholder="Email Address" aria-label="Email address" value={fields.email} onChange={set('email')} className={field} />
+        <input maxLength={40} placeholder="Phone Number" aria-label="Phone number" value={fields.phone} onChange={set('phone')} className={field} />
+        <input maxLength={80} placeholder="Country" aria-label="Country" value={fields.country} onChange={set('country')} className={field} />
       </div>
-      <textarea placeholder="Requirement" className={`${field} mt-4 min-h-[120px]`} />
+      <textarea maxLength={5000} placeholder="Requirement" aria-label="Requirement" value={fields.message} onChange={set('message')} className={`${field} mt-4 min-h-[120px]`} />
+      {/* Honeypot: off-screen and skipped by keyboard and screen readers, so only bots fill it. */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        className="absolute -left-[9999px] h-px w-px opacity-0"
+      />
       <p className="mt-3 text-xs text-navy/40">
         Note: We respect your privacy and will never share your details for marketing.
       </p>
-      <button type="submit" className="btn-green mt-5 w-full">
-        Send Your Request <FiSend className="h-4 w-4" />
+      <button type="submit" disabled={status === 'sending'} className="btn-green mt-5 w-full disabled:opacity-60">
+        {status === 'sending' ? 'Sending…' : <>Send Your Request <FiSend className="h-4 w-4" /></>}
       </button>
     </form>
   )

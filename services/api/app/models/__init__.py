@@ -1,4 +1,5 @@
 from app.models.connection import Connection
+from app.models.contact import ContactInquiry
 from app.models.opportunity import Application, Opportunity
 from app.models.organization import Organization
 from app.models.profile import Education, Experience, Profile, Resume
@@ -14,4 +15,5 @@ __all__ = [
     "Organization",
     "Opportunity",
     "Application",
+    "ContactInquiry",
 ]

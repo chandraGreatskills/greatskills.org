@@ -33,12 +33,18 @@ class Settings(BaseSettings):
     # Where links in emails point.
     portal_url: str = "https://achievers.greatskills.org"
 
+    # Who gets told about new contact-form inquiries. Empty = saved, not emailed.
+    notify_to: str = ""
+    # Contact form: max submissions per IP per hour (needs Redis; skipped without it).
+    contact_rate_per_hour: int = 5
+
     # CORS origins allowed to call the API (portal + marketing site)
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:5174",
         "https://achievers.greatskills.org",
         "https://greatskills.org",
+        "https://www.greatskills.org",
     ]
 
     # Storage

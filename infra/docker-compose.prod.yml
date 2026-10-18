@@ -69,6 +69,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Who is emailed about new contact-form inquiries. Empty = saved only.
+      NOTIFY_TO: ${NOTIFY_TO:-}
     # Loopback only. nginx terminates TLS and proxies here.
     ports:
       - "127.0.0.1:8010:8000"
