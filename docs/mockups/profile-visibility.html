@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile Visibility Mockup</title>
+<style>
+  :root {
+    --bg: #f3f4f7;
+    --card: #ffffff;
+    --ink: #16181d;
+    --muted: #5d6472;
+    --faint: #8a91a0;
+    --line: #e3e6ec;
+    --brand: #0f5ef7;
+    --brand-soft: #e8f0ff;
+    --green: #127a46;
+    --green-soft: #e3f5ea;
+    --amber: #8a5a00;
+    --amber-soft: #fff3d6;
+    --red: #b42318;
+    --red-soft: #fde8e6;
+    --navy: #13284d;
+    --lock: #f6f7f9;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115; --card: #181b21; --ink: #eceef2; --muted: #a4abb8; --faint: #7b8392;
+      --line: #2a2f38; --brand: #5b8fff; --brand-soft: #1b2740; --green: #4cc38a; --green-soft: #15291f;
+      --amber: #f0b44c; --amber-soft: #2e2512; --red: #f47066; --red-soft: #33181a; --navy: #0b1730;
+      --lock: #1d2128; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --card: #181b21; --ink: #eceef2; --muted: #a4abb8; --faint: #7b8392;
+    --line: #2a2f38; --brand: #5b8fff; --brand-soft: #1b2740; --green: #4cc38a; --green-soft: #15291f;
+    --amber: #f0b44c; --amber-soft: #2e2512; --red: #f47066; --red-soft: #33181a; --navy: #0b1730;
+    --lock: #1d2128; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+  header.top h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 760px; }
+
+  /* viewer switcher */
+  .switch { padding: 14px 0 12px; margin-top: 12px; }
+
+  /* app bar: a quiet white bar; color only marks state */
+  :root { --brandnavy: #012652; --leaf: #6fab2f; --leafdeep: #359706; --search: #edf0f4; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --brandnavy: #cfdcf0; --search: #232830; } }
+  :root[data-theme="dark"] { --brandnavy: #cfdcf0; --search: #232830; }
+  .appbar-outer {
+    position: sticky; top: 0; z-index: 10; background: var(--card); border-bottom: 1px solid var(--line);
+    margin: 4px calc(50% - 50vw) 0;
+  }
+  .appbar { max-width: 1180px; margin: 0 auto; padding: 0 16px; height: 60px; display: flex; align-items: center; gap: 14px; }
+  .appbar .brand img { height: 34px; width: auto; display: block; }
+  .appbar .search {
+    flex: 0 1 280px; min-width: 150px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    background: var(--card); border: 1px solid #c9ced6; border-radius: 6px; color: var(--muted); font-size: 14px;
+  }
+  .appbar .search svg { width: 16px; height: 16px; flex: 0 0 auto; }
+  .appbar nav { display: flex; align-items: stretch; height: 100%; margin-left: auto; }
+  .navitem {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-width: 74px; padding: 0 8px; color: var(--muted); font-size: 12px; cursor: default; white-space: nowrap;
+  }
+  .navitem svg { width: 22px; height: 22px; }
+  .navitem:hover { color: var(--ink); }
+  .navitem.active { color: var(--brandnavy); font-weight: 600; }
+  .navitem.active::after { content: ""; position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--leaf); }
+  .navitem .count {
+    position: absolute; top: 6px; left: calc(50% + 3px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--leafdeep); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center;
+    box-shadow: 0 0 0 2px var(--card);
+  }
+  .navitem .mini { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 700; color: #fff; }
+  .navsep { width: 1px; background: var(--line); margin: 12px 6px; }
+  .create {
+    align-self: center; margin-left: 8px; border: 1px solid var(--brandnavy); color: var(--brandnavy); background: transparent;
+    border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .create-wrap { position: relative; align-self: center; }
+  .create-menu {
+    position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 270px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(16, 24, 40, .16); padding: 6px;
+  }
+  .create-menu[hidden] { display: none; }
+  .create-menu .opt { display: grid; grid-template-columns: 1fr; padding: 8px 10px; border-radius: 8px; cursor: default; }
+  .create-menu .opt:hover { background: var(--search); }
+  .create-menu .opt b { font-size: 14px; color: var(--ink); }
+  .create-menu .opt span { font-size: 12px; color: var(--muted); }
+  .create-menu .grp { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); padding: 8px 10px 2px; }
+  .appbar .out { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+  .appbar .out .lnk { color: var(--muted); font-size: 14px; }
+  .appbar .out .join { color: var(--brandnavy); font-weight: 600; font-size: 14px; }
+  .appbar .out .sign { border: 1px solid var(--brandnavy); color: var(--brandnavy); border-radius: 999px; padding: 7px 18px; font-weight: 600; font-size: 14px; }
+  .preview-gap { height: 16px; }
+  .bottombar { display: none; }
+  @media (max-width: 1000px) { .navitem { min-width: 52px; } .navitem .lbl { display: none; } .navitem.active::after { bottom: 10px; } }
+  @media (max-width: 760px) {
+    .appbar nav, .appbar .create, .appbar .out .lnk { display: none; }
+    .appbar .search { flex: 1 1 auto; }
+    .appbar .icons { display: flex; height: 100%; }
+    .bottombar {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: 58px; background: var(--card);
+      border-top: 1px solid var(--line); justify-content: space-around; padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottombar .navitem { min-width: 0; flex: 1; }
+    .bottombar .navitem .lbl { display: block; }
+    .bottombar .navitem.active::after { bottom: 2px; }
+    body { padding-bottom: 64px; }
+  }
+  @media (min-width: 761px) { .appbar .icons { display: none; } }
+  .switch-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-bottom: 8px; }
+  .tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .tab {
+    flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 8px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px;
+  }
+  .tab:hover { border-color: var(--brand); }
+  .tab[aria-selected="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .viewer-note {
+    margin-top: 10px; padding: 10px 14px; border-radius: 10px; background: var(--brand-soft);
+    color: var(--ink); font-size: 14px;
+  }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; margin-top: 8px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden; }
+  .card .pad { padding: 18px 20px; }
+  .card h2 { font-size: 17px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .card h3 { font-size: 15px; margin: 0; }
+
+  /* profile header */
+  .cover { height: 120px; background: linear-gradient(120deg, #dbe5f0, #e4eedb); }
+  .head { padding: 0 20px 18px; position: relative; }
+  .avatar {
+    width: 116px; height: 116px; border-radius: 50%; margin-top: -58px; border: 4px solid var(--card);
+    background: linear-gradient(135deg, #f2a65a, #e0607e); color: #fff; display: grid; place-items: center;
+    font-size: 40px; font-weight: 700; position: relative;
+  }
+  .avatar.blurred { filter: grayscale(1) blur(1px); opacity: .7; }
+  .name { font-size: 24px; font-weight: 700; margin: 10px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pron { font-size: 14px; font-weight: 400; color: var(--muted); }
+  .degree { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .headline { margin: 2px 0 6px; font-size: 16px; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .badge { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-weight: 600; }
+  .badge.blue { background: var(--brand-soft); color: var(--brand); }
+  .badge.amber { background: var(--amber-soft); color: var(--amber); }
+  .badge.red { background: var(--red-soft); color: var(--red); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .btn { border: 1px solid var(--brand); color: var(--brand); background: transparent; padding: 7px 16px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 600; cursor: default; }
+  .btn.solid { background: var(--brand); color: #fff; }
+  .btn.ghost { border-color: var(--line); color: var(--muted); }
+  .btn.danger { border-color: var(--red); color: var(--red); }
+
+  /* content */
+  .item { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .item:first-of-type { border-top: 0; padding-top: 0; }
+  .logo { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 15px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .tiny { color: var(--faint); font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+  .chip b { color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 16px; font-size: 14px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  @media (max-width: 520px) { .kv { grid-template-columns: 1fr; } .kv dd { margin-bottom: 6px; } }
+  .progress { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .progress span { display: block; height: 100%; background: var(--green); }
+
+  /* locked + audience */
+  .locked { background: var(--lock); border-style: dashed; }
+  .locked .pad { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; }
+  .lockicon { width: 30px; height: 30px; border-radius: 50%; background: var(--line); display: grid; place-items: center; flex: 0 0 auto; }
+  .limited-note { margin-top: 10px; font-size: 13px; color: var(--faint); }
+  .aud { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--card); }
+  .aud::before { content: "\25CF  "; font-size: 9px; vertical-align: 1px; }
+  .aud.public::before { color: var(--green); }
+  .aud.members::before { color: var(--brand); }
+  .aud.connections::before { color: #7a5af8; }
+  .aud.recruiters::before, .aud.applied::before { color: var(--amber); }
+  .aud.private::before { color: var(--red); }
+  .special { border-left: 4px solid var(--brand); }
+  .special.admin { border-left-color: var(--red); }
+  .special.app { border-left-color: var(--amber); }
+  .special.edu { border-left-color: var(--green); }
+  .special.otw { border-left-color: var(--green); }
+
+  /* side */
+  .side h2 { font-size: 15px; }
+  .side ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
+  .side li { margin-bottom: 8px; }
+  .side li b { color: var(--ink); }
+
+  /* side rail */
+  .side h2 { font-size: 15px; margin-bottom: 10px; }
+  .person { display: grid; grid-template-columns: 40px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .person:first-of-type { border-top: 0; padding-top: 0; }
+  .person .pic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .person .nm { font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .person .hl { color: var(--muted); font-size: 13px; line-height: 1.35; }
+  .person .btn { margin-top: 6px; padding: 4px 12px; font-size: 13px; }
+  .rail-link { display: block; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .check { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+  .check li { display: flex; gap: 8px; padding: 5px 0; color: var(--ink); }
+  .check li::before { content: "\2713"; color: var(--green); font-weight: 700; width: 14px; }
+  .check li.todo { color: var(--muted); }
+  .check li.todo::before { content: "\25CB"; color: var(--faint); }
+  .viewas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .viewas button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .viewas button:hover { border-color: var(--brand); color: var(--brand); }
+  .stage { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; font-size: 12px; color: var(--muted); }
+  .stage div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 2px; }
+  .stage b { display: block; font-size: 18px; color: var(--ink); }
+  .stage .here { border-color: var(--amber); background: var(--amber-soft); }
+  .log { font-size: 13px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
+  .log li { padding: 6px 0; border-top: 1px solid var(--line); }
+  .log li:first-child { border-top: 0; padding-top: 0; }
+  .log b { color: var(--ink); font-weight: 600; }
+
+  /* numbered design notes */
+  .notes-toggle { float: right; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--muted); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .pin {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 0; padding: 0;
+    background: #f5a524; color: #1b1300; font: 700 11px/1 system-ui, sans-serif; cursor: pointer; vertical-align: middle;
+    box-shadow: 0 0 0 3px rgba(245, 165, 36, .25); flex: 0 0 auto;
+  }
+  body.no-notes .pin { display: none; }
+  .pop {
+    position: absolute; z-index: 50; max-width: 300px; background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.5; box-shadow: 0 8px 28px rgba(16, 24, 40, .18);
+  }
+  .pop b { display: block; font-size: 14px; margin-bottom: 4px; }
+  .pop[hidden] { display: none; }
+
+  /* matrix */
+  .matrix-wrap { overflow-x: auto; }
+  table.matrix { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 860px; }
+  .matrix th, .matrix td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  .matrix thead th { position: sticky; top: 0; background: var(--card); font-weight: 600; color: var(--muted); }
+  .matrix td.f { font-weight: 600; white-space: nowrap; }
+  .matrix th.cur { color: var(--brand); }
+  .m { display: inline-block; padding: 1px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .m.full { background: var(--green-soft); color: var(--green); }
+  .m.limited { background: var(--amber-soft); color: var(--amber); }
+  .m.hidden { background: var(--lock); color: var(--faint); }
+  .m.none { color: var(--faint); background: transparent; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  footer { margin-top: 28px; font-size: 13px; color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Who sees what on a member profile</h1>
+    <p>One sample member, eight different viewers. Pick a viewer to see the profile the way they would. Locked cards mean the viewer knows a section exists but can't open it. Sections they shouldn't know about are left out entirely. The full field-by-field table is at the bottom.</p>
+  </header>
+
+  <div class="switch">
+    <div class="switch-label">Viewing as <label class="notes-toggle"><input type="checkbox" id="notesToggle" checked> Show design notes</label></div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="viewer-note" id="viewerNote"></div>
+  </div>
+
+  <div id="appbar"></div>
+  <div class="preview-gap"></div>
+
+  <div class="layout">
+    <main id="profile"></main>
+    <aside class="side" id="rail"></aside>
+  </div>
+
+  <section class="card" style="margin-top:8px">
+    <div class="pad">
+      <h2>Field-by-field visibility (defaults)</h2>
+      <div class="legend">
+        <span><span class="m full">Full</span> sees everything</span>
+        <span><span class="m limited">Partial</span> sees a summary</span>
+        <span><span class="m hidden">Locked</span> knows it exists, can't open</span>
+        <span><span class="m none">-</span> not shown at all</span>
+      </div>
+      <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+    </div>
+  </section>
+
+  <div id="bottombar"></div>
+
+  <footer>Mockup with fictional sample data. The practices are based on how LinkedIn's profile privacy settings and Open to Work feature, and Facebook's audience selector and View As tool, generally work. Check each provider's help pages for current specifics.</footer>
+</div>
+
+<script>
+const VIEWERS = [
+  { key: 'public', label: 'Public (not signed in)', note: 'Someone who found the profile through a search engine or a shared link. They get a minimal preview and an invitation to join.' },
+  { key: 'member', label: 'Member (not connected)', note: 'Any signed-in member who is not connected yet, for example another student. They see the profile but not contact details or private sections.' },
+  { key: 'connection', label: 'Friend / connection', note: 'A first-degree connection. They see the full profile and contact email, and can message directly.' },
+  { key: 'employer', label: 'Employer / HR (browsing)', note: 'A verified recruiter at a verified company, browsing candidates. They see the recruiters-only Open to Work card but not the resume or contact info.' },
+  { key: 'applicant', label: 'Employer reviewing an application', note: 'The same recruiter after this member applied to their job. The resume and contact details are shared with this job only, along with the application.' },
+  { key: 'professor', label: 'Professor / university', note: 'An instructor at the member\'s verified university who teaches their program. They see academic progress for their own cohort, not job-search details.' },
+  { key: 'admin', label: 'Great Skills admin', note: 'A platform admin. They see account status, verification and reports. Resumes and private content stay closed unless they give a reason, and every access is logged.' },
+  { key: 'owner', label: 'The member (own profile)', note: 'The member editing their own profile. Every section shows who can see it, with a View As switch to preview each audience.' },
+];
+
+const P = {
+  initials: 'AR', name: 'Ananya Rao', pronouns: 'she/her',
+  headline: 'Data AI Scientist trainee | Final-year B.Tech, Computer Science',
+  location: 'Hyderabad, India', type: 'Student',
+};
+
+const AUD_LABEL = {
+  public: 'Public', members: 'Members', connections: 'Connections',
+  recruiters: 'Recruiters only', applied: 'Employers I apply to', private: 'Only me',
+};
+
+// mode per viewer: full | limited | hidden | none
+// [mode, note]. note explains a limited or locked state.
+const SECTIONS = [
+  {
+    key: 'application', title: 'Application', audience: 'applied', cls: 'special app',
+    vis: { applicant: ['full'], owner: ['full', 'You see your own applications under My Jobs, not on your profile.'] },
+    ownerHidden: true,
+    body: () => `
+      <dl class="kv">
+        <dt>Job</dt><dd>Junior Data Analyst, Brightline Analytics</dd>
+        <dt>Applied</dt><dd>Oct 14, 2026 · via Great Skills</dd>
+        <dt>Status</dt><dd><span class="badge amber">Under review</span></dd>
+        <dt>Screening answers</dt><dd>Available to start: Jan 2027 · Willing to relocate: Yes</dd>
+        <dt>Cover note</dt><dd>"I built a demand-forecasting model for a local retailer in my program capstone and would love to do that work at scale..."</dd>
+        <dt>Team notes</dt><dd class="sub">Private to the hiring team. The candidate never sees these.</dd>
+      </dl>
+      <div class="actions"><button class="btn solid">Move to interview</button><button class="btn">Message</button><button class="btn ghost">Not a fit</button></div>`,
+  },
+  {
+    key: 'admin', title: 'Admin panel', audience: 'private', cls: 'special admin',
+    vis: { admin: ['full'] }, ownerHidden: true,
+    body: () => `
+      <dl class="kv">
+        <dt>Account email</dt><dd>a.rao@example.com <span class="badge">Verified</span></dd>
+        <dt>Joined</dt><dd>Oct 2, 2026 · last active 2 hours ago</dd>
+        <dt>Account status</dt><dd><span class="badge">Active</span></dd>
+        <dt>Role claim</dt><dd>Student at Lakeview State University <span class="badge">Confirmed by school email</span></dd>
+        <dt>Reports</dt><dd>0 open · 0 closed</dd>
+        <dt>Moderation history</dt><dd class="sub">None</dd>
+        <dt>Sign-in security</dt><dd>2-step verification on · 1 active session</dd>
+      </dl>
+      <p class="limited-note">Resume and private posts are closed. Opening them asks for a reason (for example, a report under review) and writes an audit log entry the member can request.</p>
+      <div class="actions"><button class="btn">Open with reason</button><button class="btn ghost">Reset verification</button><button class="btn danger">Suspend account</button></div>`,
+  },
+  {
+    key: 'instructor', title: 'Program progress', audience: 'members', cls: 'special edu',
+    vis: { professor: ['full'], admin: ['full'], owner: ['full', 'Shown to you and your program instructors only.'] },
+    ownerAud: 'Instructors',
+    body: (mode, v) => `
+      <div class="item"><div class="logo" style="background:#127a46">GS</div><div>
+        <h3>Data AI Scientist · Cohort 2026-B</h3>
+        <div class="sub">Week 7 of 10 · one hour a day</div>
+        <div class="progress" style="margin:8px 0 6px"><span style="width:70%"></span></div>
+        <div class="tiny">Weekly assessments: 6 of 7 submitted · average 84% · capstone proposal approved</div>
+      </div></div>
+      ${v === 'professor' ? '<div class="actions"><button class="btn">Message student</button><button class="btn ghost">Write a recommendation</button></div>' : ''}`,
+  },
+  {
+    key: 'otw', title: 'Open to work', audience: 'recruiters', cls: 'special otw',
+    vis: { employer: ['full'], applicant: ['full'], admin: ['full'], owner: ['full'] },
+    body: () => `
+      <dl class="kv">
+        <dt>Roles</dt><dd>Data Analyst, Junior Data Scientist, ML Intern</dd>
+        <dt>Work type</dt><dd>Full-time, Internship</dd>
+        <dt>Location</dt><dd>Hyderabad, Bengaluru, Remote</dd>
+        <dt>Start</dt><dd>From Jan 2027</dd>
+      </dl>
+      <p class="limited-note">Visible to verified recruiters only. The member's network doesn't see this unless they switch it to all members.</p>`,
+  },
+  {
+    key: 'about', title: 'About', audience: 'public',
+    vis: { public: ['limited', 'First two lines only. Sign in to read more.'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: (mode) => mode === 'limited'
+      ? `<p style="margin:0">Computer science student who likes turning messy operational data into decisions people actually use...</p>`
+      : `<p style="margin:0">Computer science student who likes turning messy operational data into decisions people actually use. In the Great Skills Data AI Scientist program I've been applying forecasting and classification to retail and public-health datasets. I'm looking for my first analyst or junior data scientist role starting in early 2027, and I'm happy to help first-year students get started with Python.</p>`,
+  },
+  {
+    key: 'credentials', title: 'Great Skills credentials', audience: 'public',
+    vis: { public: ['full'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: () => `
+      <div class="item"><div class="logo" style="background:#0f5ef7">GS</div><div>
+        <h3>Data AI Scientist (in progress)</h3>
+        <div class="sub">Great Skills · expected Dec 2026</div>
+        <div class="tiny">Issued by Great Skills, so it can be checked from a link. Not an accredited qualification.</div>
+      </div></div>
+      <div class="item"><div class="logo" style="background:#2fb8a8">GS</div><div>
+        <h3>Python for Data Analysis · Assessment passed</h3>
+        <div class="sub">Great Skills · Aug 2026 · <span style="color:var(--brand)">Verify credential</span></div>
+      </div></div>`,
+  },
+  {
+    key: 'experience', title: 'Experience', audience: 'public',
+    vis: { public: ['limited', 'Titles and organizations only. Sign in for dates and details.'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: (mode) => `
+      <div class="item"><div class="logo" style="background:#7a5af8">BR</div><div>
+        <h3>Data Analytics Intern</h3><div class="sub">Brightline Analytics · Internship</div>
+        ${mode === 'full' ? `<div class="tiny">May 2026 - Jul 2026 · Hyderabad</div><p style="margin:6px 0 0;font-size:14px">Built a churn dashboard used by the customer success team; cut weekly reporting time from a day to an hour.</p>` : ''}
+      </div></div>
+      <div class="item"><div class="logo" style="background:#e0607e">LS</div><div>
+        <h3>Teaching Assistant, Intro to Programming</h3><div class="sub">Lakeview State University · Part-time</div>
+        ${mode === 'full' ? `<div class="tiny">Aug 2025 - present</div>` : ''}
+      </div></div>`,
+  },
+  {
+    key: 'education', title: 'Education', audience: 'public',
+    vis: { public: ['full'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: () => `
+      <div class="item"><div class="logo" style="background:#e0607e">LS</div><div>
+        <h3>Lakeview State University</h3><div class="sub">B.Tech, Computer Science · 2023 - 2027</div>
+        <div class="tiny">Linked to the university's page · enrollment confirmed by school email</div>
+      </div></div>`,
+  },
+  {
+    key: 'skills', title: 'Skills', audience: 'public',
+    vis: { public: ['limited', 'Top three skills, no endorsements.'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: (mode) => {
+      const s = [['Python', 14], ['SQL', 11], ['Machine Learning', 8], ['Power BI', 5], ['Statistics', 6], ['Data Visualization', 4]];
+      const list = mode === 'limited' ? s.slice(0, 3) : s;
+      return `<div class="chips">${list.map(([n, c]) => `<span class="chip">${n}${mode === 'full' ? `<b>${c} endorsements</b>` : ''}</span>`).join('')}</div>`;
+    },
+  },
+  {
+    key: 'projects', title: 'Projects', audience: 'members',
+    vis: { public: ['hidden', 'Members only. Join Great Skills to see projects.'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: () => `
+      <div class="item"><div class="logo" style="background:#f2a65a">P</div><div>
+        <h3>Retail demand forecasting (program capstone)</h3>
+        <div class="sub">Python, Prophet, Power BI · repository and write-up linked</div>
+      </div></div>
+      <div class="item"><div class="logo" style="background:#2fb8a8">P</div><div>
+        <h3>Clinic wait-time classifier</h3>
+        <div class="sub">Team of 3 · scikit-learn</div>
+      </div></div>`,
+  },
+  {
+    key: 'recs', title: 'Recommendations', audience: 'members',
+    vis: { public: ['hidden', 'Members only.'], member: ['full'], connection: ['full'], employer: ['full'], applicant: ['full'], professor: ['full'], admin: ['full'], owner: ['full'] },
+    body: () => `
+      <div class="item"><div class="logo" style="background:#13284d">MK</div><div>
+        <h3>Prof. M. Kapoor</h3><div class="sub">Taught Ananya at Lakeview State University</div>
+        <p style="margin:6px 0 0;font-size:14px">"One of the most careful analysts in her cohort. She asks the question behind the question."</p>
+      </div></div>`,
+  },
+  {
+    key: 'activity', title: 'Activity', audience: 'connections',
+    vis: {
+      public: ['limited', 'Only posts the member marked Public.'], member: ['limited', 'Posts shared with Public or Members.'],
+      connection: ['full'], employer: ['limited', 'Posts shared with Public or Members.'], applicant: ['limited', 'Posts shared with Public or Members.'],
+      professor: ['limited', 'Posts shared with Public or Members.'], admin: ['full', 'Includes reported or removed posts.'], owner: ['full'],
+    },
+    body: (mode) => `
+      <div class="item"><div class="logo" style="background:#0f5ef7">✎</div><div>
+        <h3>Posted: "What I learned forecasting Diwali demand with five years of sales data"</h3>
+        <div class="sub">Public · 2 days ago · 48 reactions · 12 comments</div>
+      </div></div>
+      ${mode === 'full' ? `<div class="item"><div class="logo" style="background:#7a5af8">✎</div><div>
+        <h3>Posted: "Anyone in Cohort 2026-B up for a study group on Saturday?"</h3>
+        <div class="sub">Connections only · 5 days ago · 9 comments</div>
+      </div></div>` : ''}`,
+  },
+  {
+    key: 'contact', title: 'Contact info', audience: 'connections',
+    vis: {
+      member: ['hidden', 'Shared with connections. Send a connection request to see it.'],
+      connection: ['full'], employer: ['hidden', 'Shared once the member applies to your job or replies to your message.'],
+      applicant: ['full', 'Shared with this application.'], professor: ['hidden', 'Shared with connections.'],
+      admin: ['full', 'Account email only. Marked private.'], owner: ['full'],
+    },
+    body: (mode, v) => `
+      <dl class="kv">
+        <dt>Email</dt><dd>a.rao@example.com</dd>
+        <dt>Phone</dt><dd>${v === 'applicant' || v === 'owner' ? '+91 90000 00000' : '<span class="sub">Not shared (Only me)</span>'}</dd>
+        <dt>Portfolio</dt><dd>ananya-rao.example.com</dd>
+      </dl>`,
+  },
+  {
+    key: 'connections', title: 'Connections', audience: 'members',
+    vis: {
+      public: ['limited', 'Count only.'], member: ['limited', 'Count and mutual connections.'], connection: ['full'],
+      employer: ['limited', 'Count and mutual connections.'], applicant: ['limited', 'Count and mutual connections.'],
+      professor: ['limited', 'Count and mutual connections.'], admin: ['limited', 'Count only. The list opens with a reason.'], owner: ['full'],
+    },
+    body: (mode, v) => `
+      <div style="font-size:15px"><b>212 connections</b> ${mode === 'full' || ['member', 'employer', 'applicant', 'professor'].includes(v) ? '· <span class="sub">8 mutual, including R. Iyer and S. Das</span>' : ''}</div>
+      ${mode === 'full' ? `<div class="chips" style="margin-top:10px"><span class="chip">R. Iyer</span><span class="chip">S. Das</span><span class="chip">K. Menon</span><span class="chip">+209 more</span></div>` : ''}`,
+  },
+  {
+    key: 'resume', title: 'Resume', audience: 'applied',
+    vis: {
+      employer: ['hidden', 'Shared only with employers this member applies to.'], applicant: ['full'],
+      admin: ['hidden', 'Closed by default. Opening it needs a reason and is logged.'], owner: ['full'],
+    },
+    body: (mode, v) => `
+      <div class="item"><div class="logo" style="background:#b42318">PDF</div><div>
+        <h3>Ananya_Rao_Resume_2026.pdf</h3>
+        <div class="sub">Updated Oct 10, 2026 · 214 KB</div>
+        ${v === 'applicant' ? '<div class="tiny">Attached to your Junior Data Analyst opening only</div>' : '<div class="tiny">Primary resume, sent when you apply</div>'}
+      </div></div>`,
+  },
+  {
+    key: 'views', title: 'Who viewed your profile', audience: 'private',
+    vis: { owner: ['full'] },
+    body: () => `
+      <div style="font-size:15px"><b>37 views</b> in the last 90 days · <span class="sub">up 40% since you added your capstone</span></div>
+      <div class="chips" style="margin-top:10px"><span class="chip">A recruiter at Brightline Analytics</span><span class="chip">Prof. M. Kapoor</span><span class="chip">3 students at Lakeview State</span></div>
+      <p class="limited-note">Viewers who browse privately show up as "Someone at a company" only.</p>`,
+  },
+];
+
+const ORDER = ['public', 'member', 'connection', 'employer', 'applicant', 'professor', 'admin', 'owner'];
+let current = 'employer';
+
+function header(v) {
+  const degree = { member: '· 2nd', connection: '· 1st', employer: '· 3rd+', applicant: '· 3rd+', professor: '· 2nd' }[v] || '';
+  const actions = {
+    public: '<button class="btn solid">Join to connect</button><button class="btn">Sign in</button>',
+    member: '<button class="btn solid">Connect</button><button class="btn">Follow</button><button class="btn ghost">More</button>',
+    connection: '<button class="btn solid">Message</button><button class="btn">Recommend</button><button class="btn ghost">More</button>',
+    employer: '<button class="btn solid">Message candidate</button><button class="btn">Save to pipeline</button><button class="btn ghost">Invite to apply</button>',
+    applicant: '<button class="btn solid">Move to interview</button><button class="btn">Message</button>',
+    professor: '<button class="btn solid">Message</button><button class="btn">Connect</button>',
+    admin: '<button class="btn">View as member</button><button class="btn danger">Suspend</button>',
+    owner: '<button class="btn solid">Edit profile</button><button class="btn">Add section</button><button class="btn ghost">View as...</button>',
+  }[v];
+  const badges = [
+    '<span class="badge">Verified student · Lakeview State</span>',
+    '<span class="badge blue">Great Skills member</span>',
+    ['employer', 'applicant', 'admin', 'owner'].includes(v) ? '<span class="badge amber">Open to work · recruiters only</span>' : '',
+    v === 'admin' ? '<span class="badge red">Admin view, logged</span>' : '',
+    'connection,member,professor'.includes(v) ? '<span class="badge blue">Open to mentoring first-years</span>' : '',
+  ].join('');
+  return `
+    <div class="card">
+      <div class="cover"></div>
+      <div class="head">
+        <div class="avatar">${P.initials}</div>
+        <div class="name">${P.name} ${v !== 'public' ? `<span class="pron">(${P.pronouns})</span>` : ''} <span class="degree">${degree}</span></div>
+        <div class="headline">${P.headline}</div>
+        <div class="meta">${P.location} · ${P.type} at Lakeview State University ${v !== 'public' ? '· <span style="color:var(--brand)">Contact info</span>' : ''}</div>
+        <div class="badges">${badges} ${pin(5)}</div>
+        ${v === 'owner' ? '<div class="tiny" style="margin-top:8px">Profile strength: <b>Advanced</b>. Add a featured project to reach All-star.</div>' : ''}
+        <div class="actions">${actions}</div>
+      </div>
+    </div>`;
+}
+
+function audChip(s) {
+  const label = s.ownerAud || AUD_LABEL[s.audience];
+  const cls = s.ownerAud ? 'members' : s.audience;
+  return `<span class="aud ${cls}" title="Who can see this">${label}</span>`;
+}
+
+// Outline icons, drawn for this mockup (24px grid, 1.8 stroke)
+const ICON = {
+  home: '<path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10v9h11v-9"/><path d="M10 19v-5h4v5"/>',
+  network: '<circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3 19c.6-3 2.7-4.5 5-4.5s4.4 1.5 5 4.5"/><path d="M14 15.2c.8-.5 1.6-.7 2.5-.7 2 0 3.6 1.3 4 4.5"/>',
+  opps: '<circle cx="12" cy="12" r="8"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  learn: '<path d="M3 9.5 12 5l9 4.5-9 4.5z"/><path d="M7 11.5V16c1.4 1.3 3.1 2 5 2s3.6-.7 5-2v-4.5"/><path d="M21 9.5V14"/>',
+  messages: '<path d="M5 6h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M8 10.5h8M8 13.5h5"/>',
+  alerts: '<path d="M6.5 16V11a5.5 5.5 0 0 1 11 0v5l1.5 2h-14z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  hiring: '<rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  campus: '<path d="M3 9 12 4l9 5"/><path d="M5 9.5V18M9.5 9.5V18M14.5 9.5V18M19 9.5V18"/><path d="M3 20h18"/>',
+  admin: '<path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+};
+const ico = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+
+const LEARNER = {
+  me: { initials: 'RI', color: '#7a5af8', name: 'Me', sub: 'Student' },
+  items: [['home', 'Home'], ['network', 'Network', 3], ['opps', 'Opportunities'], ['learn', 'Learn'], ['messages', 'Messages', 2], ['alerts', 'Alerts', 5]],
+  strip: '<b>Data AI Scientist</b> · Week 7 of 10 <div class="bar"><span></span></div> Next assessment due Friday <span class="go">Continue learning</span>',
+};
+const RECRUITER = {
+  me: { initials: 'BA', color: '#2fb8a8', name: 'Me', sub: 'Hiring · Brightline' },
+  items: [['home', 'Home'], ['network', 'Network'], ['hiring', 'Hiring', 12, 'role'], ['opps', 'Opportunities'], ['messages', 'Messages', 4], ['alerts', 'Alerts', 9]],
+  strip: '<b>Brightline Analytics</b> · 3 open roles · 12 new applicants · 2 interviews today <span class="go">Open pipeline</span>',
+};
+const NAV = {
+  member: { ...LEARNER, active: 'network' },
+  connection: { ...LEARNER, me: { ...LEARNER.me, initials: 'SD', color: '#e0607e' }, active: 'network' },
+  employer: { ...RECRUITER, active: 'network' },
+  applicant: { ...RECRUITER, active: 'hiring' },
+  professor: {
+    me: { initials: 'MK', color: '#13284d', name: 'Me', sub: 'Faculty · Lakeview State' },
+    items: [['home', 'Home'], ['network', 'Network'], ['campus', 'Campus', 4, 'role'], ['opps', 'Opportunities'], ['messages', 'Messages', 1], ['alerts', 'Alerts', 3]],
+    strip: '<b>Cohort 2026-B</b> · 32 students · 4 assessments to review · research post closes in 5 days <span class="go">Open gradebook</span>',
+    active: 'campus',
+  },
+  admin: {
+    me: { initials: 'GS', color: '#b42318', name: 'Me', sub: 'Admin' },
+    items: [['home', 'Home'], ['network', 'Network'], ['opps', 'Opportunities'], ['admin', 'Admin', 3, 'role'], ['messages', 'Messages'], ['alerts', 'Alerts', 7]],
+    strip: '<b>Admin mode</b> · every profile you open is logged · 3 open reports · 5 organizations awaiting verification <span class="go">Review queue</span>',
+    active: 'admin',
+  },
+  owner: { ...LEARNER, me: { initials: 'AR', color: '#e0607e', name: 'Me', sub: 'Student' }, active: 'me' },
+};
+
+const CREATE_ALL = [['Post', 'Share an update, photo or document'], ['Article', 'Write something longer for your network']];
+const CREATE_ROLE = {
+  member: ['As a learner', [['Project', 'Add work to your portfolio'], ['Recommendation request', 'Ask a professor or manager']]],
+  connection: ['As a learner', [['Project', 'Add work to your portfolio'], ['Recommendation request', 'Ask a professor or manager']]],
+  owner: ['As a learner', [['Project', 'Add work to your portfolio'], ['Recommendation request', 'Ask a professor or manager']]],
+  employer: ['For Brightline Analytics', [['Job or internship', 'Post an opening under your company page'], ['Hiring event', 'Campus drive, webinar or open house']]],
+  applicant: ['For Brightline Analytics', [['Job or internship', 'Post an opening under your company page'], ['Hiring event', 'Campus drive, webinar or open house']]],
+  professor: ['For Lakeview State', [['Research opportunity', 'Assistantship, lab position or project'], ['Event', 'Seminar, workshop or guest lecture']]],
+  admin: ['For Great Skills', [['Announcement', 'Shown to all members or a selected group'], ['Program cohort', 'Open enrollment for a new cohort']]],
+};
+const opt = ([t, d]) => `<div class="opt"><b>${t}</b><span>${d}</span></div>`;
+function createMenu(v) {
+  const [g, items] = CREATE_ROLE[v];
+  return `<div class="create-menu" id="createMenu" hidden>${CREATE_ALL.map(opt).join('')}<div class="grp">${g}</div>${items.map(opt).join('')}</div>`;
+}
+function appbar(v) {
+  const logo = '<div class="brand"><img src="../../apps/web/public/assets/GreatSkills_Logo-1.svg" alt="Great Skills"></div>';
+  const bar = (inner) => `<div class="appbar-outer"><div class="appbar">${inner}</div></div>`;
+  if (v === 'public') {
+    document.getElementById('appbar').innerHTML = bar(`${logo}
+      <div class="out"><span class="lnk">Programs</span><span class="lnk">Opportunities</span><span class="lnk">Organizations</span><span class="join">Join now</span><span class="sign">Sign in</span></div>`);
+    document.getElementById('bottombar').innerHTML = '';
+    return;
+  }
+  const n = NAV[v];
+  const item = ([k, label, count]) => `<span title="${label}" class="navitem ${n.active === k ? 'active' : ''}">${ico(k)}<span class="lbl">${label}</span>${count ? `<span class="count">${count}</span>` : ''}</span>`;
+  const main = n.items.filter(i => i[3] !== 'role');
+  const role = n.items.find(i => i[3] === 'role');
+  const me = `<span title="${n.me.sub}" class="navitem ${n.active === 'me' ? 'active' : ''}"><span class="mini" style="background:${n.me.color}">${n.me.initials}</span><span class="lbl">Me ▾</span></span>`;
+  document.getElementById('appbar').innerHTML = bar(`${logo}
+    <div class="search">${ico('search')}<span>Search</span></div>
+    <nav>${main.map(item).join('')}${me}<span class="navsep"></span>${role ? item(role) : ''}<span class="create-wrap"><button class="create" id="createBtn" aria-haspopup="menu">+ Create ▾</button>${createMenu(v)}</span><span style="align-self:center;margin-left:8px">${pin(10)}</span></nav>
+    <div class="icons">${main.filter(i => i[0] === 'messages' || i[0] === 'alerts').map(item).join('')}${me}</div>`);
+  const find = (k) => n.items.find(i => i[0] === k);
+  const fourth = role || find('opps');
+  const fifth = find('learn') || find('opps');
+  document.getElementById('bottombar').innerHTML = `<div class="bottombar">
+    ${item(find('home'))}${item(find('network'))}
+    <span class="navitem">${ico('plus')}<span class="lbl">Create</span></span>
+    ${item(fourth)}${item(fifth === fourth ? find('messages') : fifth)}</div>`;
+}
+
+const NOTES = {
+  1: ['Audience per section', 'Each section has its own audience (Public, Members, Connections, Only me), the way Facebook\'s audience selector works. One global "private profile" switch is too blunt.'],
+  2: ['Open to work goes to recruiters only', 'By default only verified recruiters see this, so a member can job-hunt without telling their current employer or the whole network. LinkedIn works the same way. The member can widen it to all members.'],
+  3: ['Resumes are shared by applying', 'Applying shares the resume with that one job poster. No one can browse resumes, including other employers and admins.'],
+  4: ['Contact details start at Connections', 'Email is visible to connections. Phone defaults to Only me. An employer gets contact details only through an application or when the member replies.'],
+  5: ['Verified badges over self-claims', 'Student, faculty and employer roles are confirmed by school or work email, or by an organization admin. A self-declared role never shows a badge.'],
+  6: ['View as', 'Members can preview their profile as any audience before they publish, like LinkedIn\'s public profile preview and Facebook\'s View As.'],
+  7: ['Admin access is logged', 'Admins see account data and reports by default. Opening a resume or private post needs a stated reason and writes an audit log entry the member can request.'],
+  8: ['Logged-out view is minimal', 'Search engines get name, headline, current role, school and credentials. The member can turn public visibility off entirely.'],
+  9: ['Never shown to anyone else', 'Password and sign-in history, date of birth, saved jobs, the list of applications, job alerts, who viewed the profile, blocked members and filed reports.'],
+  10: ['Role tools sit right of the divider', 'The main menu is identical for everyone. Role-specific tools (Hiring, Campus, Admin) appear after the divider only for verified roles.'],
+  11: ['Suggestions respect privacy', 'Suggestions use shared schools, cohorts, organizations and mutual connections. They never reveal who viewed whom, and a member can opt out of appearing in them.'],
+  12: ['Candidate search uses only recruiter-visible data', 'Similar candidates are matched on skills, credentials and Open to Work preferences. Nothing private is used, and a member who switches Open to Work off drops out of these lists.'],
+};
+const pin = (n) => `<button class="pin" data-n="${n}" aria-label="Design note ${n}">${n}</button>`;
+const SECTION_PIN = { activity: 1, otw: 2, resume: 3, contact: 4, admin: 7, views: 9 };
+
+const person = (ini, color, name, hl, btn) => `<div class="person"><div class="pic" style="background:${color}">${ini}</div><div><div class="nm">${name}</div><div class="hl">${hl}</div>${btn ? `<button class="btn">${btn}</button>` : ''}</div></div>`;
+const card = (title, inner, n) => `<div class="card"><div class="pad"><h2>${title} ${n ? pin(n) : ''}</h2>${inner}</div></div>`;
+
+function rail(v) {
+  const alsoViewed = card('People also viewed',
+    person('RI', '#7a5af8', 'Ravi Iyer', 'Data AI Scientist trainee · Lakeview State', v === 'connection' ? 'Message' : 'Connect') +
+    person('KM', '#2fb8a8', 'Kavya Menon', 'Analytics Intern at Brightline Analytics', 'Connect') +
+    person('JT', '#f2a65a', 'Jordan Tate', 'ML Engineer · mentor in Great Skills', 'Follow') +
+    '<span class="rail-link">Show all</span>');
+  const R = {
+    public: () =>
+      card('Join Great Skills', '<p class="sub" style="margin:0 0 10px">Connect with Ananya, see her projects, and find programs and opportunities in your field.</p><button class="btn solid">Join now</button> <button class="btn">Sign in</button>', 8) +
+      card('Programs to explore', person('GS', '#0f5ef7', 'Data AI Scientist', '10 weeks · one hour a day · no entry test') + person('GS', '#2fb8a8', 'Python for Data Analysis', 'Self-paced assessment')),
+    member: () =>
+      alsoViewed +
+      card('People you may know', person('SD', '#e0607e', 'Sara Das', 'Cohort 2026-B · 8 mutual connections', 'Connect') + person('AP', '#13284d', 'Arjun Pillai', 'Lakeview State · CS 2027', 'Connect'), 11),
+    connection: () =>
+      card('You and Ananya', '<ul class="check"><li>Both in Cohort 2026-B</li><li>Both studied at Lakeview State</li><li>8 mutual connections</li></ul><div class="actions" style="margin-top:10px"><button class="btn solid">Message</button><button class="btn">Recommend</button></div>') +
+      alsoViewed,
+    employer: () =>
+      card('Similar candidates',
+        person('RI', '#7a5af8', 'Ravi Iyer', 'Open to work · Python, SQL · Hyderabad', 'Save') +
+        person('NB', '#127a46', 'Neha Bhat', 'Open to work · Power BI, Statistics · Remote', 'Save') +
+        person('TS', '#b42318', 'Tom Silva', 'Open to work · ML Intern · Bengaluru', 'Save') + '<span class="rail-link">Search talent</span>', 12) +
+      card('Invite to one of your roles', '<ul class="log"><li><b>Junior Data Analyst</b> · 41 applicants</li><li><b>ML Intern, Summer 2027</b> · 18 applicants</li><li><b>BI Developer</b> · 9 applicants</li></ul><button class="btn" style="margin-top:10px">Invite Ananya to apply</button>'),
+    applicant: () =>
+      card('Junior Data Analyst pipeline', '<div class="stage"><div><b>41</b>Applied</div><div class="here"><b>12</b>Review</div><div><b>3</b>Interview</div><div><b>0</b>Offer</div></div><p class="tiny" style="margin:10px 0 0">Ananya is in Review. 7 of 12 reviewed.</p><div class="actions"><button class="btn ghost">Previous</button><button class="btn">Next applicant</button></div>') +
+      card('Hiring team', person('DL', '#13284d', 'Dev L.', 'Hiring manager · rated 4 of 5') + person('PS', '#7a5af8', 'Priya S.', 'Recruiter · added a note') + '<p class="tiny" style="margin:8px 0 0">Ratings and notes stay inside the hiring team.</p>'),
+    professor: () =>
+      card('Cohort 2026-B', person('AR', '#e0607e', 'Ananya Rao', 'Week 7 · 6 of 7 assessments') + person('RI', '#7a5af8', 'Ravi Iyer', 'Week 7 · 7 of 7 assessments') + person('SD', '#e0607e', 'Sara Das', 'Week 6 · needs a check-in') + '<span class="rail-link">Open gradebook</span>') +
+      card('Recommendation requests', '<ul class="log"><li><b>Ananya Rao</b> · for Brightline Analytics · due Oct 25</li><li><b>Ravi Iyer</b> · for a research assistantship</li></ul>'),
+    admin: () =>
+      card('Account signals', '<ul class="check"><li>Email verified</li><li>School email matches Lakeview State</li><li>2-step verification on</li><li class="todo">No reports</li></ul>') +
+      card('Recent admin activity', '<ul class="log"><li><b>You</b> opened this profile · just now · reason: routine check</li><li><b>Verification bot</b> confirmed school email · Oct 2</li></ul>', 7) +
+      card('Queue', '<ul class="log"><li><b>3</b> open reports</li><li><b>5</b> organizations awaiting verification</li><li><b>2</b> employer accounts to review</li></ul>'),
+    owner: () =>
+      card('Profile strength', '<div class="progress" style="margin-bottom:10px"><span style="width:80%"></span></div><ul class="check"><li>Photo and headline</li><li>Education verified</li><li>3 or more skills</li><li class="todo">Add a featured project</li><li class="todo">Ask for a recommendation</li></ul>') +
+      card('View your profile as', `<div class="viewas">${ORDER.filter(k => k !== 'owner').map(k => `<button data-view="${k}">${VIEWERS.find(x => x.key === k).label}</button>`).join('')}</div>`, 6) +
+      card('Only you can see this', '<ul class="log"><li><b>4</b> saved jobs</li><li><b>2</b> applications in progress</li><li><b>1</b> job alert</li><li><b>0</b> blocked members</li></ul>', 9),
+  };
+  document.getElementById('rail').innerHTML = R[v]();
+}
+function render() {
+  const v = current;
+  appbar(v);
+  document.getElementById('viewerNote').textContent = VIEWERS.find(x => x.key === v).note;
+  let html = header(v);
+  for (const s of SECTIONS) {
+    const [mode, note] = s.vis[v] || ['none'];
+    if (mode === 'none') continue;
+    if (v === 'owner' && s.ownerHidden) continue;
+    if (mode === 'hidden') {
+      html += `<div class="card locked"><div class="pad"><div class="lockicon" aria-hidden="true">🔒</div><div><b style="color:var(--ink)">${s.title}</b> ${SECTION_PIN[s.key] ? pin(SECTION_PIN[s.key]) : ''}<br>${note}</div></div></div>`;
+      continue;
+    }
+    html += `<div class="card ${s.cls || ''}"><div class="pad">
+      <h2>${s.title} ${v === 'owner' ? audChip(s) : ''} ${SECTION_PIN[s.key] ? pin(SECTION_PIN[s.key]) : ''}</h2>
+      ${s.body(mode, v)}
+      ${mode === 'limited' && note ? `<div class="limited-note">${note}</div>` : ''}
+      ${mode === 'full' && note ? `<div class="limited-note">${note}</div>` : ''}
+    </div></div>`;
+  }
+  document.getElementById('profile').innerHTML = html;
+  rail(v);
+  closePop();
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.key === v));
+  document.querySelectorAll('.matrix th[data-key]').forEach(th => th.classList.toggle('cur', th.dataset.key === v));
+}
+
+function tabs() {
+  document.getElementById('tabs').innerHTML = VIEWERS.map(x =>
+    `<button class="tab" role="tab" data-key="${x.key}">${x.label}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    current = t.dataset.key;
+    try { localStorage.setItem('pv-viewer', current); } catch (e) {}
+    render();
+  }));
+}
+
+function matrix() {
+  const short = { public: 'Public', member: 'Member', connection: 'Connection', employer: 'Employer', applicant: 'Employer + applied', professor: 'Professor', admin: 'Admin', owner: 'Self' };
+  const rows = [
+    ['Name, photo, headline', { public: 'full', member: 'full', connection: 'full', employer: 'full', applicant: 'full', professor: 'full', admin: 'full', owner: 'full' }, 'Public'],
+    ['Pronouns', { public: 'none', member: 'full', connection: 'full', employer: 'full', applicant: 'full', professor: 'full', admin: 'full', owner: 'full' }, 'Members'],
+    ['Verified badges', { public: 'full', member: 'full', connection: 'full', employer: 'full', applicant: 'full', professor: 'full', admin: 'full', owner: 'full' }, 'Public'],
+  ];
+  const levelName = { full: 'Full', limited: 'Partial', hidden: 'Locked', none: '-' };
+  let h = `<thead><tr><th>Field</th><th>Default audience</th>${ORDER.map(k => `<th data-key="${k}">${short[k]}</th>`).join('')}</tr></thead><tbody>`;
+  for (const [f, m, aud] of rows) {
+    h += `<tr><td class="f">${f}</td><td>${aud}</td>${ORDER.map(k => `<td><span class="m ${m[k]}">${levelName[m[k]]}</span></td>`).join('')}</tr>`;
+  }
+  for (const s of SECTIONS) {
+    h += `<tr><td class="f">${s.title}</td><td>${s.ownerAud || AUD_LABEL[s.audience]}</td>${ORDER.map(k => {
+      const mode = (s.vis[k] || ['none'])[0];
+      const note = (s.vis[k] || [])[1] || '';
+      return `<td title="${note.replace(/"/g, '&quot;')}"><span class="m ${mode}">${levelName[mode]}</span></td>`;
+    }).join('')}</tr>`;
+  }
+  h += '</tbody>';
+  document.getElementById('matrix').innerHTML = h;
+}
+
+try { const saved = localStorage.getItem('pv-viewer'); if (saved && ORDER.includes(saved)) current = saved; } catch (e) {}
+if (ORDER.includes(location.hash.slice(1))) current = location.hash.slice(1);
+const pop = document.createElement('div');
+pop.className = 'pop'; pop.hidden = true; pop.setAttribute('role', 'dialog');
+document.body.appendChild(pop);
+function closePop() { pop.hidden = true; }
+document.addEventListener('click', (e) => {
+  const cb = e.target.closest('#createBtn');
+  const cm = document.getElementById('createMenu');
+  if (cb && cm) { cm.hidden = !cm.hidden; return; }
+  if (cm && !e.target.closest('#createMenu')) cm.hidden = true;
+  const b = e.target.closest('.pin');
+  const vb = e.target.closest('[data-view]');
+  if (vb) { current = vb.dataset.view; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (!b) { if (!e.target.closest('.pop')) closePop(); return; }
+  const [t, body] = NOTES[b.dataset.n];
+  pop.innerHTML = `<b>${b.dataset.n}. ${t}</b>${body}`;
+  pop.hidden = false;
+  const r = b.getBoundingClientRect();
+  const w = Math.min(300, window.innerWidth - 32);
+  pop.style.width = w + 'px';
+  pop.style.left = Math.max(16, Math.min(r.left + window.scrollX - 10, window.scrollX + window.innerWidth - w - 16)) + 'px';
+  pop.style.top = (r.bottom + window.scrollY + 8) + 'px';
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePop(); });
+const nt = document.getElementById('notesToggle');
+try { if (localStorage.getItem('pv-notes') === 'off') nt.checked = false; } catch (e) {}
+const applyNotes = () => { document.body.classList.toggle('no-notes', !nt.checked); if (!nt.checked) closePop(); };
+nt.addEventListener('change', () => { try { localStorage.setItem('pv-notes', nt.checked ? 'on' : 'off'); } catch (e) {} applyNotes(); });
+applyNotes();
+
+tabs();
+matrix();
+render();
+</script>
+</body>
+</html>
