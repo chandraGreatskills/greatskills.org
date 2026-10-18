@@ -4,6 +4,7 @@ from app.models.newsletter import NewsletterSubscriber
 from app.models.opportunity import Application, Opportunity
 from app.models.organization import Organization
 from app.models.profile import Education, Experience, Profile, Resume
+from app.models.session import AuthSession, PasswordReset
 from app.models.user import User
 
 __all__ = [
@@ -18,4 +19,6 @@ __all__ = [
     "Application",
     "ContactInquiry",
     "NewsletterSubscriber",
+    "AuthSession",
+    "PasswordReset",
 ]

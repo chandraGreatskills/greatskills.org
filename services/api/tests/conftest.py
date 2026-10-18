@@ -1,5 +1,8 @@
 import os
+import tempfile
 
+# Uploads go to a throwaway folder, never the real uploads/ directory.
+os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="gs-test-uploads-")
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["ENVIRONMENT"] = "development"
 # No Redis in tests: the contact-form throttle must fail open.

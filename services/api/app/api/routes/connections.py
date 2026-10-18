@@ -1,17 +1,19 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import or_, select
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.models.connection import Connection
+from app.models.user import User
 from app.schemas.social import ConnectionOut, ConnectionRequestIn
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
 @router.post("", response_model=ConnectionOut, status_code=201)
-async def send_request(payload: ConnectionRequestIn, current: CurrentUser, db: DbSession):
+async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: DbSession):
     if payload.addressee_id == current.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot connect to yourself")
 
@@ -26,6 +28,10 @@ async def send_request(payload: ConnectionRequestIn, current: CurrentUser, db: D
             )
         )
     )
+    target = await db.get(User, payload.addressee_id)
+    # A block reads as "no such member" so it can't be detected by probing.
+    if not target or not target.is_active or (existing and existing.status == "blocked"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Connection already exists")
 
@@ -44,7 +50,7 @@ async def send_request(payload: ConnectionRequestIn, current: CurrentUser, db: D
 async def list_connections(
     current: CurrentUser,
     db: DbSession,
-    status_filter: str = Query("accepted", alias="status"),
+    status_filter: Literal["accepted", "pending", "declined"] = Query("accepted", alias="status"),
 ):
     rows = await db.scalars(
         select(Connection).where(
@@ -77,7 +83,7 @@ async def respond(
     accept: bool = Query(...),
 ):
     conn = await db.get(Connection, conn_id)
-    if not conn or conn.addressee_id != current.id:
+    if not conn or conn.addressee_id != current.id or conn.status != "pending":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
     conn.status = "accepted" if accept else "declined"
     await db.commit()

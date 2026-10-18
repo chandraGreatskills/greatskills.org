@@ -18,8 +18,12 @@ class Settings(BaseSettings):
     # Auth / JWT
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    access_token_ttl_min: int = 30
+    access_token_ttl_min: int = 15
+    # A session stays alive while used at least every refresh_token_ttl_days,
+    # and ends after session_max_days no matter what.
     refresh_token_ttl_days: int = 30
+    session_max_days: int = 90
+    password_reset_ttl_min: int = 60
     verify_token_ttl_hours: int = 48
 
     # Outgoing email (SMTP over SSL). Empty host = not configured: production
@@ -37,6 +41,10 @@ class Settings(BaseSettings):
     notify_to: str = ""
     # Contact form: max submissions per IP per hour (needs Redis; skipped without it).
     contact_rate_per_hour: int = 5
+    # Sign-in and sign-up throttles, same Redis counter (skipped without Redis).
+    login_rate_per_ip_hour: int = 30
+    login_rate_per_email_hour: int = 10
+    register_rate_per_hour: int = 10
 
     # CORS origins allowed to call the API (portal + marketing site)
     cors_origins: list[str] = [
@@ -58,6 +66,25 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.environment == "development"
+
+    def check_production(self) -> None:
+        """Refuse to start in production on settings that would quietly make
+        every account forgeable or every database readable."""
+        if self.is_dev:
+            return
+        problems = []
+        if self.jwt_secret == "change-me-in-production":
+            problems.append("JWT_SECRET is still the public default")
+        elif len(self.jwt_secret) < 32:
+            import logging
+
+            logging.getLogger("greatskills").warning(
+                "JWT_SECRET is shorter than 32 characters; rotate it to a longer random value"
+            )
+        if self.database_url.startswith("sqlite"):
+            problems.append("DATABASE_URL points at sqlite; production must use Postgres")
+        if problems:
+            raise RuntimeError("Unsafe production settings: " + "; ".join(problems))
 
 
 @lru_cache

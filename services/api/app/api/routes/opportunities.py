@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
 from app.models.opportunity import Application, Opportunity
+from app.models.profile import Profile, Resume
 from app.schemas.social import (
     ApplicationIn,
     ApplicationOut,
@@ -35,6 +36,11 @@ async def list_opportunities(
 
 @router.post("", response_model=OpportunityOut, status_code=201)
 async def create_opportunity(payload: OpportunityIn, current: CurrentUser, db: DbSession):
+    # Posting under an organization's name needs proof of membership, which
+    # doesn't exist yet. Until it does, only admins can attach an org, so no
+    # one can post a job that appears to come from a university or employer.
+    if payload.org_id is not None and current.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Posting for an organization needs a verified organization account")
     opp = Opportunity(posted_by=current.id, **payload.model_dump())
     db.add(opp)
     await db.commit()
@@ -64,6 +70,16 @@ async def apply(opp_id: UUID, payload: ApplicationIn, current: CurrentUser, db: 
     )
     if dup:
         raise HTTPException(status.HTTP_409_CONFLICT, "Already applied")
+
+    if payload.resume_id is not None:
+        # Only your own resume can go with your application.
+        owned = await db.scalar(
+            select(Resume.id)
+            .join(Profile, Profile.id == Resume.profile_id)
+            .where(Resume.id == payload.resume_id, Profile.user_id == current.id)
+        )
+        if not owned:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
 
     app_row = Application(
         opportunity_id=opp_id,

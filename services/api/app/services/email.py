@@ -162,3 +162,67 @@ async def send_signup_notification(sub) -> None:
 <p style="margin:0;font-size:13px;color:{INK};">Signed up on {escape(where)}</p>""",
     )
     await send_email(settings.notify_to, f"New newsletter signup: {sub.email}", text, html)
+
+
+def _button(label: str, link: str) -> str:
+    return f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr>
+<td style="border-radius:12px;background:{GREEN};">
+<a href="{escape(link)}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:12px;">{escape(label)}</a>
+</td></tr></table>"""
+
+
+def _para(text: str, color: str = INK, size: int = 15) -> str:
+    return f'<p style="margin:0 0 14px;font-size:{size}px;line-height:1.6;color:{color};">{escape(text)}</p>'
+
+
+async def send_password_reset_email(to: str, token: str, full_name: str | None = None) -> None:
+    link = f"{settings.portal_url}/reset-password?token={token}"
+    minutes = settings.password_reset_ttl_min
+    first = _first_name(full_name)
+    greeting = f"Hi {first}," if first else "Hi there,"
+    text = (
+        f"{greeting}\n\n"
+        "Someone asked to reset the password for your Great Skills Achievers account. "
+        "If that was you, choose a new password here:\n\n"
+        f"{link}\n\n"
+        f"The link works once, for {minutes} minutes. If you didn't ask for this, ignore "
+        "this email. Your password stays the same.\n\n"
+        "Great Skills\nhttps://greatskills.org\n"
+    )
+    html = _layout(
+        "Reset your password",
+        _para(greeting, NAVY)
+        + _para("Someone asked to reset the password for your Great Skills Achievers account. "
+                "If that was you, choose a new password below.")
+        + _button("Choose a new password", link)
+        + _para(f"The link works once, for {minutes} minutes. If you didn't ask for this, "
+                "ignore this email. Your password stays the same.", INK, 13)
+        + f"""<p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:{INK};">Button not working? Copy this link into your browser:<br>
+<a href="{escape(link)}" style="color:{GREEN};word-break:break-all;">{escape(link)}</a></p>""",
+    )
+    await send_email(to, "Reset your Great Skills Achievers password", text, html)
+
+
+async def send_password_changed_email(to: str, full_name: str | None = None) -> None:
+    """Sent after any password change, so a member whose account was taken
+    over finds out and can act."""
+    link = f"{settings.portal_url}/forgot-password"
+    first = _first_name(full_name)
+    greeting = f"Hi {first}," if first else "Hi there,"
+    text = (
+        f"{greeting}\n\n"
+        "The password for your Great Skills Achievers account was just changed, and "
+        "you were signed out on your other devices.\n\n"
+        "If this wasn't you, reset your password now:\n"
+        f"{link}\n\n"
+        "Great Skills\nhttps://greatskills.org\n"
+    )
+    html = _layout(
+        "Your password was changed",
+        _para(greeting, NAVY)
+        + _para("The password for your Great Skills Achievers account was just changed, and "
+                "you were signed out on your other devices.")
+        + _para("If this wasn't you, reset your password now.")
+        + _button("Reset my password", link),
+    )
+    await send_email(to, "Your Great Skills Achievers password was changed", text, html)
