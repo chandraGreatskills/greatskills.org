@@ -54,6 +54,11 @@ export default function Login() {
             placeholder="••••••••"
           />
         </div>
+        <div className="text-right">
+          <Link to="/forgot-password" className="text-sm font-semibold text-green-deep">
+            Forgot password?
+          </Link>
+        </div>
         <button className="btn-green w-full" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>

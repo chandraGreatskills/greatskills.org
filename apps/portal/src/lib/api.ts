@@ -1,24 +1,20 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const PREFIX = '/api/v1'
 
-const ACCESS_KEY = 'gs_access'
-const REFRESH_KEY = 'gs_refresh'
+// Sign-in lives in httpOnly cookies the page can't read. The one readable
+// cookie, gs_csrf, is copied into a header on every change so the API knows
+// the request came from this page and not from another site.
+function csrfToken(): string {
+  const m = document.cookie.match(/(?:^|;\s*)gs_csrf=([^;]+)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
 
-export const tokens = {
-  get access() {
-    return localStorage.getItem(ACCESS_KEY)
-  },
-  get refresh() {
-    return localStorage.getItem(REFRESH_KEY)
-  },
-  set({ access_token, refresh_token }: { access_token: string; refresh_token: string }) {
-    localStorage.setItem(ACCESS_KEY, access_token)
-    localStorage.setItem(REFRESH_KEY, refresh_token)
-  },
-  clear() {
-    localStorage.removeItem(ACCESS_KEY)
-    localStorage.removeItem(REFRESH_KEY)
-  },
+// Tokens used to be kept in localStorage. Remove any left behind.
+try {
+  localStorage.removeItem('gs_access')
+  localStorage.removeItem('gs_refresh')
+} catch {
+  /* storage blocked: nothing to clean */
 }
 
 export class ApiError extends Error {
@@ -29,27 +25,36 @@ export class ApiError extends Error {
   }
 }
 
+// One refresh at a time: if several requests hit an expired token together,
+// they all wait on the same renewal instead of racing each other.
+let refreshing: Promise<boolean> | null = null
+function renew(): Promise<boolean> {
+  refreshing ??= fetch(`${BASE}${PREFIX}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-CSRF-Token': csrfToken() },
+  })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null
+    })
+  return refreshing
+}
+
 async function raw(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   const headers = new Headers(init.headers)
   if (!(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
-  if (tokens.access) headers.set('Authorization', `Bearer ${tokens.access}`)
+  const method = (init.method || 'GET').toUpperCase()
+  if (method !== 'GET' && method !== 'HEAD') headers.set('X-CSRF-Token', csrfToken())
 
-  const res = await fetch(`${BASE}${PREFIX}${path}`, { ...init, headers })
+  const res = await fetch(`${BASE}${PREFIX}${path}`, { ...init, headers, credentials: 'include' })
 
-  // transparent refresh on 401
-  if (res.status === 401 && retry && tokens.refresh) {
-    const refreshed = await fetch(`${BASE}${PREFIX}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: tokens.refresh }),
-    })
-    if (refreshed.ok) {
-      tokens.set(await refreshed.json())
-      return raw(path, init, false)
-    }
-    tokens.clear()
+  // transparent refresh on 401, except for the sign-in calls themselves
+  if (res.status === 401 && retry && !path.startsWith('/auth/login') && (await renew())) {
+    return raw(path, init, false)
   }
   return res
 }

@@ -3,6 +3,7 @@ import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
+import SecurityCard from '../components/SecurityCard'
 
 export default function Profile() {
   const { refreshMe } = useAuth()
@@ -163,6 +164,8 @@ export default function Profile() {
             onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])}
           />
         </div>
+
+        <SecurityCard />
       </aside>
 
       {/* Right: editable details */}

@@ -23,8 +23,9 @@ async def test_register_login_me_flow(client):
         },
     )
     assert r.status_code == 201, r.text
-    tokens = r.json()
-    assert tokens["access_token"] and tokens["refresh_token"]
+    # tokens travel in httpOnly cookies, never in the body
+    assert "access_token" not in r.json()
+    assert client.cookies.get("gs_access") and client.cookies.get("gs_csrf")
 
     # duplicate email rejected
     r2 = await client.post(
@@ -39,7 +40,6 @@ async def test_register_login_me_flow(client):
         json={"email": "jane@example.com", "password": "supersecret1"},
     )
     assert r3.status_code == 200
-    access = r3.json()["access_token"]
 
     # bad password
     r4 = await client.post(
@@ -49,14 +49,14 @@ async def test_register_login_me_flow(client):
     assert r4.status_code == 401
 
     # me
-    headers = {"Authorization": f"Bearer {access}"}
-    r5 = await client.get(f"{PREFIX}/auth/me", headers=headers)
+    r5 = await client.get(f"{PREFIX}/auth/me")
     assert r5.status_code == 200
     body = r5.json()
     assert body["email"] == "jane@example.com"
     assert body["profile"]["handle"] == "jane-doe"
 
     # unauthenticated me
+    client.cookies.clear()
     r6 = await client.get(f"{PREFIX}/auth/me")
     assert r6.status_code == 401
 
@@ -67,12 +67,9 @@ async def test_profile_update_and_public_view(client):
         f"{PREFIX}/auth/register",
         json={"email": "ash@example.com", "password": "supersecret1", "full_name": "Ash Patel"},
     )
-    access = reg.json()["access_token"]
-    headers = {"Authorization": f"Bearer {access}"}
-
+    assert reg.status_code == 201
     upd = await client.patch(
         f"{PREFIX}/profiles/me",
-        headers=headers,
         json={"headline": "Data Scientist", "skills": ["python", "ml"], "open_to_work": True},
     )
     assert upd.status_code == 200
@@ -80,6 +77,7 @@ async def test_profile_update_and_public_view(client):
     assert upd.json()["skills"] == ["python", "ml"]
 
     # public profile by handle, no auth needed
+    client.cookies.clear()
     pub = await client.get(f"{PREFIX}/profiles/ash-patel")
     assert pub.status_code == 200
     assert pub.json()["headline"] == "Data Scientist"
@@ -91,11 +89,9 @@ async def test_opportunities_flow(client):
         f"{PREFIX}/auth/register",
         json={"email": "rec@example.com", "password": "supersecret1", "full_name": "Rita Rec"},
     )
-    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
-
+    assert reg.status_code == 201
     created = await client.post(
         f"{PREFIX}/opportunities",
-        headers=headers,
         json={"title": "Junior Data Scientist", "kind": "employment", "remote": True},
     )
     assert created.status_code == 201
@@ -115,7 +111,7 @@ async def test_register_succeeds_in_production_without_email_backend(client, mon
         json={"email": "prod@example.com", "password": "s3cret-pass", "full_name": "Prod User"},
     )
     assert r.status_code == 201
-    assert "access_token" in r.json()
+    assert r.json()["email"] == "prod@example.com"
 
 
 async def _register(client, monkeypatch, email="ver@example.com"):
@@ -132,7 +128,7 @@ async def _register(client, monkeypatch, email="ver@example.com"):
         json={"email": email, "password": "supersecret1", "full_name": "Ver User"},
     )
     assert r.status_code == 201
-    return r.json()["access_token"], sent
+    return client.cookies.get("gs_access"), sent
 
 
 @pytest.mark.asyncio
@@ -140,12 +136,11 @@ async def test_verify_email_flow(client, monkeypatch):
     access, sent = await _register(client, monkeypatch)
     assert len(sent) == 1
     token = sent[0][1]
-    auth = {"Authorization": f"Bearer {access}"}
 
-    assert (await client.get(f"{PREFIX}/auth/me", headers=auth)).json()["is_verified"] is False
+    assert (await client.get(f"{PREFIX}/auth/me")).json()["is_verified"] is False
     r = await client.post(f"{PREFIX}/auth/verify-email", json={"token": token})
     assert r.status_code == 200
-    assert (await client.get(f"{PREFIX}/auth/me", headers=auth)).json()["is_verified"] is True
+    assert (await client.get(f"{PREFIX}/auth/me")).json()["is_verified"] is True
 
     # clicking the link twice is harmless
     assert (await client.post(f"{PREFIX}/auth/verify-email", json={"token": token})).status_code == 200
@@ -156,7 +151,9 @@ async def test_verify_token_cannot_log_in_and_access_token_cannot_verify(client,
     access, sent = await _register(client, monkeypatch)
     verify = sent[0][1]
 
-    r = await client.get(f"{PREFIX}/auth/me", headers={"Authorization": f"Bearer {verify}"})
+    client.cookies.clear()
+    client.cookies.set("gs_access", verify)
+    r = await client.get(f"{PREFIX}/auth/me")
     assert r.status_code == 401
     r = await client.post(f"{PREFIX}/auth/verify-email", json={"token": access})
     assert r.status_code == 400
@@ -167,12 +164,11 @@ async def test_verify_token_cannot_log_in_and_access_token_cannot_verify(client,
 @pytest.mark.asyncio
 async def test_resend_only_when_unverified(client, monkeypatch):
     access, sent = await _register(client, monkeypatch)
-    auth = {"Authorization": f"Bearer {access}"}
 
-    assert (await client.post(f"{PREFIX}/auth/resend-verification", headers=auth)).status_code == 204
+    assert (await client.post(f"{PREFIX}/auth/resend-verification")).status_code == 204
     assert len(sent) == 2
     await client.post(f"{PREFIX}/auth/verify-email", json={"token": sent[0][1]})
-    await client.post(f"{PREFIX}/auth/resend-verification", headers=auth)
+    await client.post(f"{PREFIX}/auth/resend-verification")
     assert len(sent) == 2
 
 

@@ -58,8 +58,8 @@ export default function TopNav() {
             </span>
           )}
           <button
-            onClick={() => {
-              logout()
+            onClick={async () => {
+              await logout()
               navigate('/login')
             }}
             title="Log out"

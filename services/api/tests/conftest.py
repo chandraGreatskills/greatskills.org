@@ -15,12 +15,41 @@ from app.db.base import Base, engine
 from app.main import app
 
 
+def _browser() -> AsyncClient:
+    """A client that behaves like the portal: keeps cookies, and copies the
+    CSRF cookie into the X-CSRF-Token header the way the page script does."""
+    c = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+    async def add_csrf(request):
+        token = c.cookies.get("gs_csrf")
+        if token and "x-csrf-token" not in request.headers:
+            request.headers["x-csrf-token"] = token
+
+    c.event_hooks["request"] = [add_csrf]
+    return c
+
+
 @pytest_asyncio.fixture
 async def client():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with _browser() as c:
         yield c
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture
+async def browser(client):
+    """Factory for extra signed-in people in one test: each gets its own
+    cookie jar, like separate browsers."""
+    opened = []
+
+    def make() -> AsyncClient:
+        c = _browser()
+        opened.append(c)
+        return c
+
+    yield make
+    for c in opened:
+        await c.aclose()

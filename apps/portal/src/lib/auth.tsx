@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { api, tokens } from './api'
+import { api } from './api'
 import type { Me } from './types'
 
 type AuthState = {
@@ -14,7 +14,9 @@ type AuthState = {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (data: RegisterData) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
+  // For when the server already ended the session (e.g. "sign out everywhere").
+  setSignedOut: () => void
   refreshMe: () => Promise<void>
 }
 
@@ -25,8 +27,6 @@ type RegisterData = {
   member_type: string
 }
 
-type TokenPair = { access_token: string; refresh_token: string }
-
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -34,14 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refreshMe = useCallback(async () => {
-    if (!tokens.access) {
-      setMe(null)
-      return
-    }
     try {
       setMe(await api.get<Me>('/auth/me'))
     } catch {
-      tokens.clear()
       setMe(null)
     }
   }, [])
@@ -51,24 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshMe])
 
   const login = async (email: string, password: string) => {
-    const pair = await api.post<TokenPair>('/auth/login', { email, password })
-    tokens.set(pair)
-    await refreshMe()
+    setMe(await api.post<Me>('/auth/login', { email, password }))
   }
 
   const register = async (data: RegisterData) => {
-    const pair = await api.post<TokenPair>('/auth/register', data)
-    tokens.set(pair)
-    await refreshMe()
+    setMe(await api.post<Me>('/auth/register', data))
   }
 
-  const logout = () => {
-    tokens.clear()
-    setMe(null)
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } finally {
+      setMe(null)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ me, loading, login, register, logout, refreshMe }}>
+    <AuthContext.Provider value={{ me, loading, login, register, logout, setSignedOut: () => setMe(null), refreshMe }}>
       {children}
     </AuthContext.Provider>
   )
