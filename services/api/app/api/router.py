@@ -5,6 +5,7 @@ from app.api.routes import (
     connections,
     contact,
     members,
+    newsletter,
     opportunities,
     profiles,
 )
@@ -16,3 +17,4 @@ api_router.include_router(members.router)
 api_router.include_router(connections.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(contact.router)
+api_router.include_router(newsletter.router)

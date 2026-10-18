@@ -75,11 +75,11 @@ async def test_rate_limit_blocks_after_limit(client, notified, monkeypatch):
 
     counts = {}
 
-    async def fake_over_limit(ip):
+    async def fake_over_limit(bucket, ip, per_hour):
         counts[ip] = counts.get(ip, 0) + 1
         return counts[ip] > 2
 
-    monkeypatch.setattr(contact_routes, "_over_limit", fake_over_limit)
+    monkeypatch.setattr(contact_routes, "over_limit", fake_over_limit)
     body = {"name": "Ana", "email": "ana@example.com"}
     codes = [(await client.post(URL, json=body, headers={"X-Real-IP": "198.51.100.1"})).status_code for _ in range(3)]
     assert codes == [201, 201, 429]

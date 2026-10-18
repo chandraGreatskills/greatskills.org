@@ -147,3 +147,18 @@ async def send_contact_notification(inquiry) -> None:
         html,
         reply_to=inquiry.email,
     )
+
+
+async def send_signup_notification(sub) -> None:
+    """Short heads-up that someone joined the newsletter list."""
+    if not settings.notify_to:
+        logger.warning("NOTIFY_TO not set; subscriber %s saved but nobody was emailed", sub.id)
+        return
+    where = sub.source or "the website"
+    text = f"New newsletter signup\n\n{sub.email}\nSigned up on: {where}\n"
+    html = _layout(
+        "New newsletter signup",
+        f"""<p style="margin:0 0 6px;font-size:16px;color:{NAVY};"><strong>{escape(sub.email)}</strong></p>
+<p style="margin:0;font-size:13px;color:{INK};">Signed up on {escape(where)}</p>""",
+    )
+    await send_email(settings.notify_to, f"New newsletter signup: {sub.email}", text, html)

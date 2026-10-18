@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
+from app.api.abuse import client_ip, over_limit
 from app.api.deps import DbSession
 from app.core.config import settings
 from app.models.contact import ContactInquiry
@@ -14,39 +15,14 @@ logger = logging.getLogger("greatskills.contact")
 router = APIRouter(prefix="/contact", tags=["contact"])
 
 
-def _client_ip(request: Request) -> str | None:
-    # nginx sets X-Real-IP; fall back to the socket peer in development.
-    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
-
-
-async def _over_limit(ip: str | None) -> bool:
-    """Best-effort per-IP throttle in Redis. If Redis is unreachable, allow."""
-    if not ip or settings.contact_rate_per_hour <= 0:
-        return False
-    try:
-        import redis.asyncio as redis
-
-        r = redis.from_url(settings.redis_url, socket_timeout=1)
-        try:
-            key = f"contact:{ip}"
-            count = await r.incr(key)
-            if count == 1:
-                await r.expire(key, 3600)
-            return count > settings.contact_rate_per_hour
-        finally:
-            await r.aclose()
-    except Exception:
-        return False
-
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def submit(payload: ContactIn, request: Request, db: DbSession):
     if payload.website:
         # Honeypot tripped: look successful so the bot moves on, store nothing.
         return {"ok": True}
 
-    ip = _client_ip(request)
-    if await _over_limit(ip):
+    ip = client_ip(request)
+    if await over_limit("contact", ip, settings.contact_rate_per_hour):
         return JSONResponse(
             {"detail": "Too many messages from your network. Please try again in an hour."},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
