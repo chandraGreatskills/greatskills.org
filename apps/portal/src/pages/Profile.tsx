@@ -4,6 +4,7 @@ import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
 import SecurityCard from '../components/SecurityCard'
+import RolesCard from '../components/RolesCard'
 
 export default function Profile() {
   const { refreshMe } = useAuth()
@@ -202,6 +203,7 @@ export default function Profile() {
           <Tags label="Interests" values={profile.interests} onChange={(v) => update({ interests: v })} />
         </div>
 
+        <RolesCard />
         <ExperienceEditor profile={profile} reload={load} />
       </section>
     </div>

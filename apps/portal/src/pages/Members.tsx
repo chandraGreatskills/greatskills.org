@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiSearch, FiUserPlus, FiMapPin } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
 import type { ProfileCard } from '../lib/types'
+import RoleBadges from '../components/RoleBadges'
 
 const filters = [
   { value: '', label: 'Everyone' },
@@ -104,6 +105,7 @@ export default function Members() {
               <div className="min-w-0">
                 <p className="truncate font-semibold text-navy">{m.full_name}</p>
                 <p className="truncate text-sm text-ink">{m.headline || m.member_type}</p>
+                <RoleBadges roles={m.verified_roles} />
               </div>
             </div>
             {m.location && (

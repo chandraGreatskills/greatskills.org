@@ -6,6 +6,8 @@ import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import VerifyRole from './pages/VerifyRole'
+import Admin from './pages/Admin'
 import Feed from './pages/Feed'
 import Members from './pages/Members'
 import Opportunities from './pages/Opportunities'
@@ -21,11 +23,13 @@ export default function App() {
           <Route path="/verify" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-role" element={<VerifyRole />} />
           <Route element={<Layout />}>
             <Route index element={<Feed />} />
             <Route path="/members" element={<Members />} />
             <Route path="/opportunities" element={<Opportunities />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { FiHome, FiUsers, FiBriefcase, FiUser, FiLogOut } from 'react-icons/fi'
+import { FiHome, FiUsers, FiBriefcase, FiUser, FiLogOut, FiShield } from 'react-icons/fi'
 import { useAuth } from '../lib/auth'
 import { fileUrl } from '../lib/api'
 
@@ -26,7 +26,7 @@ export default function TopNav() {
         </NavLink>
 
         <nav className="flex items-center gap-1">
-          {links.map(({ to, label, Icon, end }) => (
+          {[...links, ...(me?.role === 'admin' ? [{ to: '/admin', label: 'Admin', Icon: FiShield, end: false }] : [])].map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
