@@ -5,7 +5,9 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
 from app.models.opportunity import Application, Opportunity
+from app.models.organization import Organization
 from app.models.profile import Profile, Resume
+from app.services.affiliations import has_verified
 from app.schemas.social import (
     ApplicationIn,
     ApplicationOut,
@@ -36,11 +38,19 @@ async def list_opportunities(
 
 @router.post("", response_model=OpportunityOut, status_code=201)
 async def create_opportunity(payload: OpportunityIn, current: CurrentUser, db: DbSession):
-    # Posting under an organization's name needs proof of membership, which
-    # doesn't exist yet. Until it does, only admins can attach an org, so no
-    # one can post a job that appears to come from a university or employer.
-    if payload.org_id is not None and current.role != "admin":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Posting for an organization needs a verified organization account")
+    # Posting under an organization's name needs a verified recruiter or
+    # faculty role there (confirmed work or school email, approved
+    # organization), so no one can post a job that appears to come from a
+    # university or employer they don't belong to. Admins may post for any
+    # approved organization.
+    if payload.org_id is not None:
+        if current.role != "admin" and not await has_verified(
+            db, current.id, ("recruiter", "faculty"), payload.org_id
+        ):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Posting for an organization needs a verified role there")
+        org = await db.get(Organization, payload.org_id)
+        if not org or org.status != "approved":
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
     opp = Opportunity(posted_by=current.id, **payload.model_dump())
     db.add(opp)
     await db.commit()

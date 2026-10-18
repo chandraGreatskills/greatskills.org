@@ -6,6 +6,7 @@ from app.models.connection import Connection
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileCardOut
+from app.services.affiliations import verified_roles
 
 router = APIRouter(prefix="/members", tags=["members"])
 
@@ -59,4 +60,9 @@ async def search_members(
         stmt = stmt.where(Profile.member_type == member_type)
 
     stmt = stmt.order_by(Profile.created_at.desc(), Profile.id).limit(limit).offset(offset)
-    return list(await db.scalars(stmt))
+    profiles = list(await db.scalars(stmt))
+    roles = await verified_roles(db, [p.user_id for p in profiles])
+    return [
+        ProfileCardOut(**ProfileCardOut.model_validate(p).model_dump(exclude={"verified_roles"}), verified_roles=roles.get(p.user_id, []))
+        for p in profiles
+    ]

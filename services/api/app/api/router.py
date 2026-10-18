@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    admin,
+    affiliations,
     auth,
     connections,
     contact,
@@ -18,3 +20,5 @@ api_router.include_router(connections.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(contact.router)
 api_router.include_router(newsletter.router)
+api_router.include_router(affiliations.router)
+api_router.include_router(admin.router)

@@ -67,3 +67,14 @@ async def get_verified_user(current: CurrentUser) -> User:
 
 
 VerifiedUser = Annotated[User, Depends(get_verified_user)]
+
+
+async def get_admin_user(current: CurrentUser) -> User:
+    # A member who isn't an admin gets the same answer as a missing page, so
+    # the admin endpoints don't advertise themselves.
+    if current.role != "admin":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return current
+
+
+AdminUser = Annotated[User, Depends(get_admin_user)]

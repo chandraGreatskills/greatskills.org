@@ -10,9 +10,10 @@ data model supports today:
   and companies only.
 - member (verified, not connected) and connection: the full profile minus
   anything private.
-- never shown to anyone but the owner: resumes, Open to Work, account email.
-  Open to Work is meant for verified recruiters only, and there are no
-  verified recruiters yet, so for now nobody else sees it.
+- verified badges: shown to everyone, logged out included.
+- Open to Work: the owner, plus signed-in verified recruiters (a confirmed
+  work email at an approved company). Nobody else.
+- never shown to anyone but the owner: resumes, account email.
 
 Admins get the member view. Wider admin access waits for the reason-and-audit
 log, so there is no unlogged back door in the meantime.
@@ -65,7 +66,9 @@ async def relation_to(
     return "member"
 
 
-def build_view(profile: Profile, rel: Relation) -> ProfileViewOut:
+def build_view(
+    profile: Profile, rel: Relation, roles: list[dict] | None = None, recruiter: bool = False
+) -> ProfileViewOut:
     """Shape a profile for a viewer who isn't its owner."""
     if rel == "self":
         raise ValueError("owners read their own profile through /profiles/me")
@@ -94,6 +97,7 @@ def build_view(profile: Profile, rel: Relation) -> ProfileViewOut:
                 for e in profile.experiences
             ],
             education=[EducationOut.model_validate(e) for e in profile.education],
+            verified_roles=roles or [],
         )
 
     return ProfileViewOut(
@@ -111,6 +115,8 @@ def build_view(profile: Profile, rel: Relation) -> ProfileViewOut:
         skills=list(profile.skills or []),
         interests=list(profile.interests or []),
         open_to_mentor=profile.open_to_mentor,
+        verified_roles=roles or [],
+        open_to_work=bool(profile.open_to_work) if recruiter else None,
         experiences=[
             ExperienceViewOut(
                 id=e.id,

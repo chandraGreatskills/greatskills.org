@@ -2,7 +2,9 @@ from uuid import UUID
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
+
+from app.schemas.affiliation import VerifiedRoleOut
 
 
 class ExperienceIn(BaseModel):
@@ -87,6 +89,8 @@ class ProfileCardOut(BaseModel):
     avatar_url: str | None = None
     member_type: str
     location: str | None = None
+    # Checked roles only (school or work email plus an approved organization).
+    verified_roles: list[VerifiedRoleOut] = []
 
 
 class ExperienceViewOut(BaseModel):
@@ -122,5 +126,16 @@ class ProfileViewOut(BaseModel):
     skills_truncated: bool = False
     interests: list[str] = []
     open_to_mentor: bool = False
+    verified_roles: list[VerifiedRoleOut] = []
+    # Only filled in for verified recruiters. For everyone else the key is
+    # left out of the response entirely, not sent as null.
+    open_to_work: bool | None = None
     experiences: list[ExperienceViewOut] = []
     education: list[EducationOut] = []
+
+    @model_serializer(mode="wrap")
+    def _omit_hidden(self, handler):
+        data = handler(self)
+        if self.open_to_work is None:
+            data.pop("open_to_work", None)
+        return data

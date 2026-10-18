@@ -123,7 +123,7 @@ async def test_directory_returns_cards_only_and_needs_verified_email(client, bro
     cards = (await h2.get(f"{PREFIX}/members")).json()
     assert len(cards) == 1
     assert set(cards[0]) == {"id", "user_id", "handle", "full_name", "headline", "avatar_url",
-                             "member_type", "location"}
+                             "member_type", "location", "verified_roles"}
     h3, _ = await _join(browser, "new@example.com", "New Person", verify=False)
     assert (await h3.get(f"{PREFIX}/members")).status_code == 403
     assert (await client.get(f"{PREFIX}/members")).status_code == 401

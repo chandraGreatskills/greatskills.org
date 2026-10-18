@@ -226,3 +226,42 @@ async def send_password_changed_email(to: str, full_name: str | None = None) -> 
         + _button("Reset my password", link),
     )
     await send_email(to, "Your Great Skills Achievers password was changed", text, html)
+
+
+def _role_phrase(kind: str, org_name: str) -> str:
+    return {
+        "student": f"they're a student at {org_name}",
+        "faculty": f"they teach or research at {org_name}",
+        "recruiter": f"they hire for {org_name}",
+    }.get(kind, f"they belong to {org_name}")
+
+
+async def send_affiliation_email(
+    to: str, token: str, kind: str, org_name: str, full_name: str | None = None
+) -> None:
+    """Sent to the school or work address a member wants to verify. Clicking
+    the link is the proof that they can read mail there."""
+    link = f"{settings.portal_url}/verify-role?token={token}"
+    hours = settings.affiliation_token_ttl_hours
+    claim = _role_phrase(kind, org_name)
+    first = _first_name(full_name)
+    greeting = f"Hi {first}," if first else "Hi there,"
+    ask = (f"A Great Skills Achievers member said this address shows {claim}, and asked us "
+           "to verify it.")
+    text = (
+        f"{greeting}\n\n{ask} If that was you, confirm here:\n\n{link}\n\n"
+        f"The link works once, for {hours} hours. If you didn't ask for this, ignore this email "
+        "and nothing changes.\n\n"
+        "Great Skills\nhttps://greatskills.org\n"
+    )
+    html = _layout(
+        "Confirm your role",
+        _para(greeting, NAVY)
+        + _para(f"{ask} If that was you, confirm below.")
+        + _button("Confirm my role", link)
+        + _para(f"The link works once, for {hours} hours. If you didn't ask for this, ignore "
+                "this email and nothing changes.", INK, 13)
+        + f"""<p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:{INK};">Button not working? Copy this link into your browser:<br>
+<a href="{escape(link)}" style="color:{GREEN};word-break:break-all;">{escape(link)}</a></p>""",
+    )
+    await send_email(to, f"Confirm your role at {org_name}", text, html)

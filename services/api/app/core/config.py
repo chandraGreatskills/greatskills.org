@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 30
     session_max_days: int = 90
     password_reset_ttl_min: int = 60
+    # Role verification. A school or work email link lasts this long.
+    affiliation_token_ttl_hours: int = 48
+    # False: a new organization waits for an admin before anyone gets a
+    # verified badge from it. True: a confirmed address on a new domain is
+    # enough on its own (faster, but easier for a fake employer).
+    org_auto_approve: bool = False
     verify_token_ttl_hours: int = 48
 
     # Outgoing email (SMTP over SSL). Empty host = not configured: production
