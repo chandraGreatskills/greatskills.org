@@ -7,6 +7,8 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["ENVIRONMENT"] = "development"
 # No Redis in tests: the contact-form throttle must fail open.
 os.environ["REDIS_URL"] = "redis://127.0.0.1:1/0"
+# Mounts the simulation engine's endpoints; tests send this as X-Sim-Token.
+os.environ["SIM_TOKEN"] = "test-sim-token"
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

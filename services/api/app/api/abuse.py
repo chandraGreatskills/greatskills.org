@@ -1,5 +1,7 @@
 """Shared protection for public, unauthenticated forms."""
 
+import hmac
+
 from fastapi import Request
 
 from app.core.config import settings
@@ -28,3 +30,12 @@ async def over_limit(bucket: str, ip: str | None, per_hour: int) -> bool:
             await r.aclose()
     except Exception:
         return False
+
+
+def is_sim(request: Request) -> bool:
+    """A call from the local simulation engine, which signs in dozens of demo
+    accounts from one machine. Development only; production never says yes."""
+    if not settings.sim_enabled:
+        return False
+    given = request.headers.get("x-sim-token", "")
+    return hmac.compare_digest(given.encode(), settings.sim_token.encode())

@@ -8,6 +8,7 @@ from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.models.connection import Connection
 from app.models.user import User
 from app.schemas.social import ConnectionOut, ConnectionRequestIn
+from app.services import demo
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -32,6 +33,9 @@ async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: 
     # A block reads as "no such member" so it can't be detected by probing.
     if not target or not target.is_active or (existing and existing.status == "blocked"):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+    if target.is_synthetic and not await demo.shows_demo(db, current):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+    demo.same_world(current, target.is_synthetic)
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Connection already exists")
 

@@ -142,6 +142,14 @@ cd apps/web && npm run dev
 - **Scaling:** the API is stateless. Scale by adding Uvicorn workers, then nodes
   behind a load balancer. Postgres holds the social graph and full-text search;
   add PgBouncer + a CDN in front as traffic grows.
+- **Demo data:** members, organizations and openings flagged `is_synthetic`
+  come from the local simulation engine and always use `.example` addresses,
+  which never receive mail. The Admin page decides who sees them (off, admins
+  only, everyone, with a Demo badge). Demo and real accounts can't connect or
+  apply across the line, and demo accounts can't sign in on production. The
+  engine's own endpoints (`/api/v1/sim/...`) exist only in development with
+  `SIM_TOKEN` set in `services/api/.env`, and every call must send it as
+  `X-Sim-Token`.
 
 ## Deploying to the Hostinger VPS
 

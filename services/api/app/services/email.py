@@ -5,12 +5,24 @@ set, and otherwise logs and skips."""
 import asyncio
 import logging
 import smtplib
+from collections import deque
 from email.message import EmailMessage
 from html import escape
 
 from app.core.config import settings
 
 logger = logging.getLogger("greatskills.email")
+
+# Addresses on the reserved .example name belong to demo accounts from the
+# simulation engine. Nothing is ever sent to them. In development their mail
+# lands here instead, so the engine can open verification links the way a
+# person would open their inbox.
+DEMO_SUFFIX = ".example"
+DEV_OUTBOX: deque[dict] = deque(maxlen=5000)
+
+
+def is_demo_address(to: str) -> bool:
+    return to.strip().lower().rstrip(".").endswith(DEMO_SUFFIX)
 
 NAVY = "#012652"
 GREEN = "#359706"
@@ -26,6 +38,10 @@ def _send_smtp(msg: EmailMessage) -> None:
 async def send_email(
     to: str, subject: str, text: str, html: str | None = None, reply_to: str | None = None
 ) -> None:
+    if is_demo_address(to):
+        if settings.is_dev:
+            DEV_OUTBOX.append({"to": to.strip().lower(), "subject": subject, "text": text})
+        return
     if settings.is_dev:
         logger.info("EMAIL -> %s | %s\n%s", to, subject, text)
         print(f"\n[DEV EMAIL] to={to}\nsubject={subject}\n{text}\n")

@@ -12,6 +12,9 @@ class UserOut(BaseModel):
     is_active: bool
     is_verified: bool
     role: str
+    # True for demo accounts from the simulation engine (development only:
+    # they can't sign in on production).
+    is_synthetic: bool = False
 
 
 class MeOut(UserOut):

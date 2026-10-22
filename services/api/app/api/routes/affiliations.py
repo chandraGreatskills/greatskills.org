@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from sqlalchemy import select
 
-from app.api.abuse import client_ip, over_limit
+from app.api.abuse import client_ip, is_sim, over_limit
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.core.config import settings
 from app.core.security import new_secret, sha256
@@ -86,6 +86,10 @@ async def add_affiliation(
     want_type = aff.ORG_TYPE_FOR[payload.kind]
     org = await aff.org_for_domain(db, domain)
     if org is not None:
+        if org.is_synthetic != current.is_synthetic:
+            # A demo organization's made-up domain, or a demo account trying a
+            # real one. Either way it proves nothing.
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "This address can't be used to verify a role.")
         if org.status == "rejected":
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
@@ -117,6 +121,8 @@ async def add_affiliation(
             org_type=want_type,
             status="approved" if settings.org_auto_approve else "pending",
             created_by=current.id,
+            is_synthetic=current.is_synthetic,
+            sim_tag=current.sim_tag,
         )
         db.add(org)
         await db.flush()
@@ -146,7 +152,7 @@ async def add_affiliation(
 async def confirm_affiliation(payload: ConfirmAffiliationIn, request: Request, db: DbSession):
     """Opened from the emailed link, often on another device (a work laptop),
     so it doesn't need the member to be signed in. The token is the proof."""
-    if await over_limit("affiliation-confirm", client_ip(request), 30):
+    if not is_sim(request) and await over_limit("affiliation-confirm", client_ip(request), 30):
         raise _slow_down()
     bad = HTTPException(status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired. Ask for a new one from your profile.")
     row = await db.scalar(select(Affiliation).where(Affiliation.token_hash == sha256(payload.token)))

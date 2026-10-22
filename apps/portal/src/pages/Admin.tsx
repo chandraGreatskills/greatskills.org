@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { ApiError, api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { ROLE_LABEL } from '../lib/roles'
-import type { AdminAffiliation, OrgReview } from '../lib/types'
+import type { AdminAffiliation, DemoMode, DemoSetting, OrgReview } from '../lib/types'
 
 type Tab = 'pending' | 'approved' | 'rejected'
 
@@ -51,6 +51,72 @@ function Members({ org }: { org: OrgReview }) {
   )
 }
 
+const DEMO_OPTIONS: { mode: DemoMode; label: string; help: string }[] = [
+  { mode: 'off', label: 'Off', help: 'Nobody sees demo data. Real members only.' },
+  { mode: 'admins', label: 'Admins only', help: 'Check a demo before anyone else sees it.' },
+  { mode: 'everyone', label: 'Everyone', help: 'Shown to all, each marked with a Demo badge.' },
+]
+
+// Demo members, organizations and openings come from the local simulation
+// engine. This switch decides who sees them; it never deletes anything.
+function DemoDataCard() {
+  const [setting, setSetting] = useState<DemoSetting | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.get<DemoSetting>('/admin/settings/demo').then(setSetting).catch(() => setError('Could not load'))
+  }, [])
+
+  const choose = async (mode: DemoMode) => {
+    if (!setting || mode === setting.mode) return
+    if (mode === 'everyone' && !window.confirm('Show demo data to every visitor? Each item carries a Demo badge.')) return
+    setSaving(true)
+    try {
+      setSetting(await api.put<DemoSetting>('/admin/settings/demo', { mode }))
+      setError('')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2 className="font-semibold text-navy">Demo data</h2>
+      {setting && (
+        <p className="mt-1 text-sm text-ink">
+          {setting.members} demo members, {setting.organizations} organizations and {setting.opportunities} openings
+          are loaded.
+        </p>
+      )}
+      <fieldset className="mt-3 grid gap-2 sm:grid-cols-3" disabled={!setting || saving}>
+        <legend className="sr-only">Who sees demo data</legend>
+        {DEMO_OPTIONS.map((o) => (
+          <label
+            key={o.mode}
+            className={`flex cursor-pointer gap-2 rounded-xl p-3 text-sm ring-1 ${setting?.mode === o.mode ? 'bg-navy-50 ring-navy/30' : 'ring-navy/10'}`}
+          >
+            <input
+              type="radio"
+              name="demo-mode"
+              className="mt-0.5"
+              checked={setting?.mode === o.mode}
+              onChange={() => choose(o.mode)}
+            />
+            <span>
+              <span className="block font-medium text-navy">{o.label}</span>
+              <span className="text-ink">{o.help}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 export default function Admin() {
   const { me } = useAuth()
   const [tab, setTab] = useState<Tab>('pending')
@@ -90,6 +156,8 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
+      <DemoDataCard />
+
       <div>
         <h1 className="font-serif text-2xl font-semibold text-navy">Organization review</h1>
         <p className="mt-1 text-sm text-ink">

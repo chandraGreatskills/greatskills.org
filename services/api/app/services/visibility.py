@@ -67,7 +67,11 @@ async def relation_to(
 
 
 def build_view(
-    profile: Profile, rel: Relation, roles: list[dict] | None = None, recruiter: bool = False
+    profile: Profile,
+    rel: Relation,
+    roles: list[dict] | None = None,
+    recruiter: bool = False,
+    is_demo: bool = False,
 ) -> ProfileViewOut:
     """Shape a profile for a viewer who isn't its owner."""
     if rel == "self":
@@ -98,6 +102,7 @@ def build_view(
             ],
             education=[EducationOut.model_validate(e) for e in profile.education],
             verified_roles=roles or [],
+            is_demo=is_demo,
         )
 
     return ProfileViewOut(
@@ -116,6 +121,7 @@ def build_view(
         interests=list(profile.interests or []),
         open_to_mentor=profile.open_to_mentor,
         verified_roles=roles or [],
+        is_demo=is_demo,
         open_to_work=bool(profile.open_to_work) if recruiter else None,
         experiences=[
             ExperienceViewOut(

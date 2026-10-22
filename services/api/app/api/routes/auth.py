@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
-from app.api.abuse import client_ip, over_limit
+from app.api.abuse import client_ip, is_sim, over_limit
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.core.security import (
@@ -128,8 +128,10 @@ async def login(payload: LoginIn, request: Request, response: Response, db: DbSe
     # Two buckets: per address (guessing one member's password from many IPs)
     # and per IP (trying many members from one machine).
     email = payload.email.lower()
-    if await over_limit("login-ip", client_ip(request), settings.login_rate_per_ip_hour) or \
-            await over_limit("login-email", email_fingerprint(email), settings.login_rate_per_email_hour):
+    if not is_sim(request) and (
+        await over_limit("login-ip", client_ip(request), settings.login_rate_per_ip_hour)
+        or await over_limit("login-email", email_fingerprint(email), settings.login_rate_per_email_hour)
+    ):
         raise _slow_down()
 
     user = await db.scalar(select(User).where(User.email == email))
@@ -139,6 +141,9 @@ async def login(payload: LoginIn, request: Request, response: Response, db: DbSe
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account disabled")
+    if user.is_synthetic and not settings.is_dev:
+        # Demo accounts are for looking at, never for signing in as.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Account disabled")
 
     await sessions.start(db, user.id, request, response)

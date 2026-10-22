@@ -6,6 +6,7 @@ from app.models.connection import Connection
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileCardOut
+from app.services import demo
 from app.services.affiliations import verified_roles
 
 router = APIRouter(prefix="/members", tags=["members"])
@@ -42,10 +43,11 @@ async def search_members(
         )
     )
     stmt = (
-        select(Profile)
+        select(Profile, User.is_synthetic)
         .join(User, User.id == Profile.user_id)
         .where(User.is_active.is_(True), Profile.user_id != current.id)
         .where(Profile.user_id.not_in(blocked))
+        .where(await demo.visible(db, current, User.is_synthetic))
     )
     if q:
         like = _like(q)
@@ -60,9 +62,13 @@ async def search_members(
         stmt = stmt.where(Profile.member_type == member_type)
 
     stmt = stmt.order_by(Profile.created_at.desc(), Profile.id).limit(limit).offset(offset)
-    profiles = list(await db.scalars(stmt))
-    roles = await verified_roles(db, [p.user_id for p in profiles])
+    rows = (await db.execute(stmt)).all()
+    roles = await verified_roles(db, [p.user_id for p, _ in rows])
     return [
-        ProfileCardOut(**ProfileCardOut.model_validate(p).model_dump(exclude={"verified_roles"}), verified_roles=roles.get(p.user_id, []))
-        for p in profiles
+        ProfileCardOut(
+            **ProfileCardOut.model_validate(p).model_dump(exclude={"verified_roles", "is_demo"}),
+            verified_roles=roles.get(p.user_id, []),
+            is_demo=synthetic,
+        )
+        for p, synthetic in rows
     ]

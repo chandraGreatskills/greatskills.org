@@ -11,7 +11,11 @@ from sqlalchemy import func, select, update
 from app.api.deps import AdminUser, DbSession
 from app.models.organization import Affiliation, Organization, OrgDomain
 from app.models.profile import Profile
+from app.models.opportunity import Opportunity
+from app.models.user import User
 from app.schemas.affiliation import AdminAffiliationOut, OrgReviewOut
+from app.schemas.demo import DemoSettingIn, DemoSettingOut
+from app.services import demo
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -41,13 +45,16 @@ async def _org(db, org_id: UUID) -> Organization:
 
 @router.get("/organizations", response_model=list[OrgReviewOut])
 async def list_organizations(
-    _: AdminUser,
+    admin: AdminUser,
     db: DbSession,
     status_filter: Literal["pending", "approved", "rejected"] = Query("pending", alias="status"),
     limit: int = Query(50, ge=1, le=200),
 ):
     orgs = await db.scalars(
-        select(Organization).where(Organization.status == status_filter)
+        select(Organization).where(
+            Organization.status == status_filter,
+            await demo.visible(db, admin, Organization.is_synthetic),
+        )
         .order_by(Organization.created_at).limit(limit)
     )
     return [await _org_out(db, o) for o in orgs]
@@ -109,3 +116,28 @@ async def revoke_affiliation(aff_id: UUID, _: AdminUser, db: DbSession):
     row.token_hash = None
     row.token_expires_at = None
     await db.commit()
+
+
+# --- Demo data ---
+async def _demo_out(db) -> DemoSettingOut:
+    async def count(model) -> int:
+        return await db.scalar(select(func.count()).select_from(model).where(model.is_synthetic.is_(True))) or 0
+
+    return DemoSettingOut(
+        mode=await demo.demo_mode(db),
+        members=await count(User),
+        organizations=await count(Organization),
+        opportunities=await count(Opportunity),
+    )
+
+
+@router.get("/settings/demo", response_model=DemoSettingOut)
+async def get_demo_setting(_: AdminUser, db: DbSession):
+    return await _demo_out(db)
+
+
+@router.put("/settings/demo", response_model=DemoSettingOut)
+async def set_demo_setting(payload: DemoSettingIn, _: AdminUser, db: DbSession):
+    await demo.set_demo_mode(db, payload.mode)
+    await db.commit()
+    return await _demo_out(db)

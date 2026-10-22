@@ -66,12 +66,20 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_upload_mb: int = 10
 
+    # Local simulation engine. Empty = its endpoints don't exist. They are
+    # never mounted outside development, whatever this holds.
+    sim_token: str = ""
+
     # Redis (cache / rate-limit / jobs)
     redis_url: str = "redis://localhost:6379/0"
 
     @property
     def is_dev(self) -> bool:
         return self.environment == "development"
+
+    @property
+    def sim_enabled(self) -> bool:
+        return self.is_dev and bool(self.sim_token)
 
     def check_production(self) -> None:
         """Refuse to start in production on settings that would quietly make

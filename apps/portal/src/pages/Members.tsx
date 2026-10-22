@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { FiSearch, FiUserPlus, FiMapPin } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import type { ProfileCard } from '../lib/types'
+import DemoBadge from '../components/DemoBadge'
 import RoleBadges from '../components/RoleBadges'
 
 const filters = [
@@ -13,6 +15,7 @@ const filters = [
 ]
 
 export default function Members() {
+  const { me } = useAuth()
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
   const [members, setMembers] = useState<ProfileCard[]>([])
@@ -103,7 +106,10 @@ export default function Members() {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate font-semibold text-navy">{m.full_name}</p>
+                <p className="flex items-center gap-2 font-semibold text-navy">
+                  <span className="truncate">{m.full_name}</span>
+                  <DemoBadge show={m.is_demo} />
+                </p>
                 <p className="truncate text-sm text-ink">{m.headline || m.member_type}</p>
                 <RoleBadges roles={m.verified_roles} />
               </div>
@@ -115,7 +121,7 @@ export default function Members() {
             )}
             <button
               onClick={() => connect(m)}
-              disabled={!!sent[m.id]}
+              disabled={!!sent[m.id] || (m.is_demo && !me?.is_synthetic)}
               className="btn-ghost mt-4 w-full"
             >
               <FiUserPlus className="h-4 w-4" /> {sent[m.id] || 'Connect'}

@@ -35,6 +35,8 @@ export type ProfileCard = {
   member_type: string
   location?: string | null
   verified_roles: VerifiedRole[]
+  // Demo member made by the simulation engine.
+  is_demo?: boolean
 }
 
 export type Profile = {
@@ -61,6 +63,7 @@ export type Me = {
   email: string
   is_verified: boolean
   role: string
+  is_synthetic?: boolean
   profile: Profile | null
 }
 
@@ -74,6 +77,7 @@ export type Opportunity = {
   skills_wanted: string[]
   posted_by: string
   status: string
+  is_demo?: boolean
 }
 
 export type RoleKind = 'student' | 'faculty' | 'recruiter'
@@ -119,4 +123,14 @@ export type AdminAffiliation = {
   member_name: string
   member_handle: string
   created_at: string
+}
+
+// Who sees demo data from the simulation engine.
+export type DemoMode = 'off' | 'admins' | 'everyone'
+
+export type DemoSetting = {
+  mode: DemoMode
+  members: number
+  organizations: number
+  opportunities: number
 }

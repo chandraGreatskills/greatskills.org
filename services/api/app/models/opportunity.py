@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -29,6 +29,9 @@ class Opportunity(Base):
     skills_wanted: Mapped[list[str]] = mapped_column(JSON, default=list)
     # open | closed
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    # Posted by a demo account; same rules as User.
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    sim_tag: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class Application(Base):

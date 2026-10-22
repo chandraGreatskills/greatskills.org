@@ -82,6 +82,8 @@ export const api = {
     ),
   patch: <T>(p: string, body: unknown) =>
     raw(p, { method: 'PATCH', body: JSON.stringify(body) }).then((r) => handle<T>(r)),
+  put: <T>(p: string, body: unknown) =>
+    raw(p, { method: 'PUT', body: JSON.stringify(body) }).then((r) => handle<T>(r)),
   del: (p: string) => raw(p, { method: 'DELETE' }).then((r) => handle<void>(r)),
   // Fetch a private file with the member's token and hand it to the browser
   // as a download. A plain link can't carry the token.

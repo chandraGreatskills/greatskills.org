@@ -59,10 +59,10 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 
 async def get_verified_user(current: CurrentUser) -> User:
-    # Browsing other members needs a confirmed email, so a throwaway sign-up
-    # can't be used to page through the directory.
+    # Browsing members, verifying roles and connecting all need a confirmed
+    # email, so a throwaway sign-up can't page through the directory or spam.
     if not current.is_verified:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Verify your email to browse members")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Confirm your email address to continue")
     return current
 
 

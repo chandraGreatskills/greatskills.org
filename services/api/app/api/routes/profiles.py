@@ -17,7 +17,9 @@ from app.schemas.profile import (
     ProfileViewOut,
     ResumeOut,
 )
+from app.models.user import User
 from app.services import affiliations as aff
+from app.services import demo
 from app.services.storage import storage
 from app.services.uploads import DOC_TYPES, document_ext, image_ext
 from app.services.visibility import build_view, relation_to
@@ -66,6 +68,9 @@ async def view_profile(handle: str, viewer: OptionalUser, db: DbSession):
     leaves the API."""
     profile = await _load_full(db, handle=handle)
     rel = await relation_to(db, viewer, profile.user_id) if profile else None
+    synthetic = bool(profile and await db.scalar(select(User.is_synthetic).where(User.id == profile.user_id)))
+    if synthetic and not await demo.shows_demo(db, viewer):
+        rel = None
     if not profile or rel is None:
         # Blocked looks exactly like missing, so a block can't be detected.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile not found")
@@ -73,7 +78,7 @@ async def view_profile(handle: str, viewer: OptionalUser, db: DbSession):
         rel = "connection"  # an owner previewing their own link sees the widest outside view
     roles = (await aff.verified_roles(db, [profile.user_id])).get(profile.user_id, [])
     recruiter = rel != "public" and viewer is not None and await aff.has_verified(db, viewer.id, ("recruiter",))
-    return build_view(profile, rel, roles, recruiter)
+    return build_view(profile, rel, roles, recruiter, is_demo=synthetic)
 
 
 # --- Experience ---

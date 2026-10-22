@@ -21,6 +21,13 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     role: Mapped[str] = mapped_column(String(20), default="member")  # member | admin
 
+    # Demo accounts made by the local simulation engine. They never sign in on
+    # production and only show when the admin's demo setting allows it (see
+    # app/services/demo.py). sim_tag names the world or run that made them, so
+    # one run can be wiped without touching another.
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    sim_tag: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
     profile: Mapped["Profile"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )

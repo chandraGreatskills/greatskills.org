@@ -91,6 +91,8 @@ class ProfileCardOut(BaseModel):
     location: str | None = None
     # Checked roles only (school or work email plus an approved organization).
     verified_roles: list[VerifiedRoleOut] = []
+    # A demo member from the simulation engine; the portal shows a Demo badge.
+    is_demo: bool = False
 
 
 class ExperienceViewOut(BaseModel):
@@ -127,6 +129,7 @@ class ProfileViewOut(BaseModel):
     interests: list[str] = []
     open_to_mentor: bool = False
     verified_roles: list[VerifiedRoleOut] = []
+    is_demo: bool = False
     # Only filled in for verified recruiters. For everyone else the key is
     # left out of the response entirely, not sent as null.
     open_to_work: bool | None = None

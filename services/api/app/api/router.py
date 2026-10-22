@@ -10,7 +10,9 @@ from app.api.routes import (
     newsletter,
     opportunities,
     profiles,
+    sim,
 )
+from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -22,3 +24,8 @@ api_router.include_router(contact.router)
 api_router.include_router(newsletter.router)
 api_router.include_router(affiliations.router)
 api_router.include_router(admin.router)
+
+# Development only, and only with SIM_TOKEN set: the simulation engine's
+# provisioning and inbox endpoints. Production never mounts them.
+if settings.sim_enabled:
+    api_router.include_router(sim.router)

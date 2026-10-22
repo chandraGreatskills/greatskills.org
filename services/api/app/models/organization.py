@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -29,6 +29,9 @@ class Organization(Base):
     created_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Demo organization from the simulation engine; same rules as User.
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    sim_tag: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class OrgDomain(Base):

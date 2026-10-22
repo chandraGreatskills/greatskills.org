@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { FiBriefcase, FiMapPin, FiPlus, FiCheck } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import type { Opportunity } from '../lib/types'
+import DemoBadge from '../components/DemoBadge'
 
 const kinds = [
   { value: '', label: 'All' },
@@ -12,6 +14,7 @@ const kinds = [
 ]
 
 export default function Opportunities() {
+  const { me } = useAuth()
   const [items, setItems] = useState<Opportunity[]>([])
   const [kind, setKind] = useState('')
   const [applied, setApplied] = useState<Record<string, string>>({})
@@ -72,7 +75,10 @@ export default function Opportunities() {
                 <FiBriefcase className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold text-navy">{o.title}</p>
+                <p className="flex items-center gap-2 font-semibold text-navy">
+                  {o.title}
+                  <DemoBadge show={o.is_demo} />
+                </p>
                 <p className="flex items-center gap-2 text-sm text-ink">
                   <span className="rounded bg-green/10 px-2 py-0.5 text-xs font-medium text-green-deep">
                     {o.kind}
@@ -86,7 +92,11 @@ export default function Opportunities() {
                 </p>
               </div>
             </div>
-            <button onClick={() => apply(o)} disabled={!!applied[o.id]} className="btn-ghost shrink-0">
+            <button
+              onClick={() => apply(o)}
+              disabled={!!applied[o.id] || (o.is_demo && !me?.is_synthetic)}
+              className="btn-ghost shrink-0"
+            >
               {applied[o.id] ? <><FiCheck className="h-4 w-4" /> {applied[o.id]}</> : 'Apply'}
             </button>
           </div>

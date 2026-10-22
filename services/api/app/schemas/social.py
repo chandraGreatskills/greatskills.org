@@ -36,6 +36,7 @@ class OpportunityOut(OpportunityIn):
     id: UUID
     posted_by: UUID
     status: str
+    is_demo: bool = Field(default=False, validation_alias="is_synthetic")
 
 
 class ApplicationIn(BaseModel):

@@ -4,6 +4,7 @@ import { FiUsers, FiBriefcase, FiUserCheck, FiArrowRight } from 'react-icons/fi'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 import type { Opportunity, ProfileCard } from '../lib/types'
+import DemoBadge from '../components/DemoBadge'
 
 export default function Feed() {
   const { me } = useAuth()
@@ -51,7 +52,10 @@ export default function Feed() {
         <div className="grid gap-3 sm:grid-cols-2">
           {opps.map((o) => (
             <div key={o.id} className="card">
-              <p className="font-semibold text-navy">{o.title}</p>
+              <p className="flex items-center gap-2 font-semibold text-navy">
+                {o.title}
+                <DemoBadge show={o.is_demo} />
+              </p>
               <p className="text-sm text-ink">
                 {o.kind} · {o.remote ? 'Remote' : o.location || 'On-site'}
               </p>
@@ -70,6 +74,7 @@ export default function Feed() {
                 {m.full_name[0]}
               </div>
               <p className="mt-2 truncate font-medium text-navy">{m.full_name}</p>
+              <DemoBadge show={m.is_demo} className="mt-1" />
               <p className="truncate text-xs text-ink">{m.headline || m.member_type}</p>
             </div>
           ))}
