@@ -10,6 +10,36 @@ const links = [
   { to: '/profile', label: 'Profile', Icon: FiUser },
 ]
 
+const navLinks = (role?: string) => [
+  ...links,
+  ...(role === 'admin' ? [{ to: '/admin', label: 'Admin', Icon: FiShield, end: false }] : []),
+]
+
+// Phones get the sections as a labeled tab bar at the bottom, in thumb reach,
+// the way the LinkedIn and Facebook apps do it.
+export function BottomNav() {
+  const { me } = useAuth()
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-navy/10 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden">
+      {navLinks(me?.role).map(({ to, label, Icon, end }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+              isActive ? 'text-green-deep' : 'text-navy/60'
+            }`
+          }
+        >
+          <Icon className="h-5 w-5" />
+          {label}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
 export default function TopNav() {
   const { me, logout } = useAuth()
   const navigate = useNavigate()
@@ -25,8 +55,8 @@ export default function TopNav() {
           />
         </NavLink>
 
-        <nav className="flex items-center gap-1">
-          {[...links, ...(me?.role === 'admin' ? [{ to: '/admin', label: 'Admin', Icon: FiShield, end: false }] : [])].map(({ to, label, Icon, end }) => (
+        <nav className="hidden items-center gap-1 sm:flex">
+          {navLinks(me?.role).map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -40,7 +70,7 @@ export default function TopNav() {
               }
             >
               <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{label}</span>
+              <span>{label}</span>
             </NavLink>
           ))}
         </nav>

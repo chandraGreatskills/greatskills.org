@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Query
 from sqlalchemy import or_, select
 
@@ -6,7 +8,7 @@ from app.models.connection import Connection
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.profile import ProfileCardOut
-from app.services import demo
+from app.services import demo, network
 from app.services.affiliations import verified_roles
 
 router = APIRouter(prefix="/members", tags=["members"])
@@ -27,6 +29,7 @@ async def search_members(
     member_type: str | None = None,
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0, le=1000),
+    scope: Literal["all", "discover"] = "all",
 ):
     """Directory search. Returns cards only; the full profile goes through
     /profiles/{handle} and its visibility rules.
@@ -34,7 +37,10 @@ async def search_members(
     There is deliberately no Open to Work filter: that flag is for verified
     recruiters only, and until recruiter verification exists a filter would
     let any member list everyone who is job hunting. Postgres full-text search
-    replaces the ilike filter at scale."""
+    replaces the ilike filter at scale.
+
+    scope=discover leaves out people the member is already connected to, for
+    suggestions. Each card says where the member stands with that person."""
     blocked = select(Connection.addressee_id).where(
         (Connection.requester_id == current.id) & (Connection.status == "blocked")
     ).union(
@@ -58,17 +64,27 @@ async def search_members(
                 Profile.industry.ilike(like, escape="\\"),
             )
         )
+    if scope == "discover":
+        stmt = stmt.where(Profile.user_id.not_in(network.accepted_with(current.id)))
     if member_type in MEMBER_TYPES:
         stmt = stmt.where(Profile.member_type == member_type)
 
     stmt = stmt.order_by(Profile.created_at.desc(), Profile.id).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
-    roles = await verified_roles(db, [p.user_id for p, _ in rows])
-    return [
-        ProfileCardOut(
-            **ProfileCardOut.model_validate(p).model_dump(exclude={"verified_roles", "is_demo"}),
-            verified_roles=roles.get(p.user_id, []),
-            is_demo=synthetic,
-        )
-        for p, synthetic in rows
-    ]
+    ids = [p.user_id for p, _ in rows]
+    roles = await verified_roles(db, ids)
+    links = await network.states(db, current.id, ids)
+    return [card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id)) for p, synthetic in rows]
+
+
+def card(p: Profile, synthetic: bool, roles: list, link=None) -> ProfileCardOut:
+    state, conn_id = link or ("none", None)
+    return ProfileCardOut(
+        **ProfileCardOut.model_validate(p).model_dump(
+            exclude={"verified_roles", "is_demo", "connection", "connection_id"}
+        ),
+        verified_roles=roles,
+        is_demo=synthetic,
+        connection=state,
+        connection_id=conn_id,
+    )

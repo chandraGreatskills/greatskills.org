@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import TopNav from './TopNav'
+import TopNav, { BottomNav } from './TopNav'
 import VerifyBanner from './VerifyBanner'
 
 export default function Layout() {
@@ -19,9 +19,10 @@ export default function Layout() {
     <div className="min-h-screen">
       <TopNav />
       <VerifyBanner />
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:py-8">
         <Outlet />
       </main>
+      <BottomNav />
     </div>
   )
 }

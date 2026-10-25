@@ -15,18 +15,23 @@ type Session = {
 // A rough, readable device name from the browser's user-agent string.
 function device(ua?: string | null) {
   if (!ua) return 'Unknown device'
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser'
+  if (/python|httpx|curl|okhttp|node-fetch|axios/i.test(ua)) return 'Script or app'
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Unknown browser'
   const os = /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : ''
-  return os ? `${browser} on ${os}` : browser
+  return os ? `${browser} on ${os}` : browser === 'Unknown browser' ? 'Unknown device' : browser
 }
 
 const when = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+
+// This device plus the most recent few; the rest sit behind "Show all".
+const SHOWN = 4
 
 export default function SecurityCard() {
   const { setSignedOut } = useAuth()
   const navigate = useNavigate()
   const [sessions, setSessions] = useState<Session[]>([])
   const [open, setOpen] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -86,7 +91,7 @@ export default function SecurityCard() {
 
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink">Where you're signed in</p>
       <ul className="space-y-2">
-        {sessions.map((s) => (
+        {(showAll ? sessions : sessions.slice(0, SHOWN)).map((s) => (
           <li key={s.id} className="flex items-center gap-2 text-sm text-navy">
             <FiMonitor className="h-4 w-4 shrink-0 text-navy/50" />
             <span className="min-w-0 flex-1">
@@ -101,6 +106,11 @@ export default function SecurityCard() {
           </li>
         ))}
       </ul>
+      {sessions.length > SHOWN && (
+        <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs font-medium text-green-deep hover:underline">
+          {showAll ? 'Show fewer' : `Show all ${sessions.length} devices`}
+        </button>
+      )}
       <button onClick={everywhere} className="mt-4 w-full text-sm font-semibold text-red-600 hover:underline">
         Sign out everywhere
       </button>

@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser
 from app.models.opportunity import Application, Opportunity
@@ -38,6 +38,18 @@ async def list_opportunities(
     stmt = stmt.order_by(Opportunity.created_at.desc()).limit(limit).offset(offset)
     rows = await db.scalars(stmt)
     return list(rows)
+
+
+@router.get("/count")
+async def count_open(db: DbSession, viewer: OptionalUser, kind: str | None = None) -> dict[str, int]:
+    """How many openings are open, for the home page. The list endpoint pages,
+    so counting what it returned would undercount."""
+    stmt = select(func.count()).select_from(Opportunity).where(
+        Opportunity.status == "open", await demo.visible(db, viewer, Opportunity.is_synthetic)
+    )
+    if kind:
+        stmt = stmt.where(Opportunity.kind == kind)
+    return {"open": await db.scalar(stmt) or 0}
 
 
 @router.post("", response_model=OpportunityOut, status_code=201)

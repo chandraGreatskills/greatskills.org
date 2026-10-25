@@ -1,7 +1,10 @@
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.profile import ProfileCardOut
 
 
 # --- Connections ---
@@ -17,6 +20,21 @@ class ConnectionOut(BaseModel):
     addressee_id: UUID
     status: str
     message: str | None = None
+
+
+class NetworkItemOut(BaseModel):
+    """One person in the member's network, with the link between them."""
+
+    id: UUID  # the connection
+    message: str | None = None
+    created_at: datetime
+    member: ProfileCardOut
+
+
+class NetworkSummaryOut(BaseModel):
+    connections: int
+    received: int
+    sent: int
 
 
 # --- Opportunities ---
@@ -36,6 +54,7 @@ class OpportunityOut(OpportunityIn):
     id: UUID
     posted_by: UUID
     status: str
+    created_at: datetime
     is_demo: bool = Field(default=False, validation_alias="is_synthetic")
 
 

@@ -5,10 +5,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
+from app.api.routes.members import card
 from app.models.connection import Connection
+from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.social import ConnectionOut, ConnectionRequestIn
+from app.schemas.social import ConnectionOut, ConnectionRequestIn, NetworkItemOut, NetworkSummaryOut
 from app.services import demo
+from app.services.affiliations import verified_roles
+from app.services.network import state_of
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -36,6 +40,21 @@ async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: 
     if target.is_synthetic and not await demo.shows_demo(db, current):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
     demo.same_world(current, target.is_synthetic)
+    if existing and existing.status == "pending" and existing.addressee_id == current.id:
+        # They already asked us: connecting back is the same as accepting.
+        existing.status = "accepted"
+        await db.commit()
+        await db.refresh(existing)
+        return existing
+    if existing and existing.status == "declined" and existing.addressee_id == current.id:
+        # We turned them down earlier and have changed our mind: reuse the row
+        # as a fresh request from us.
+        existing.requester_id, existing.addressee_id = current.id, payload.addressee_id
+        existing.status = "pending"
+        existing.message = payload.message
+        await db.commit()
+        await db.refresh(existing)
+        return existing
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Connection already exists")
 
@@ -93,3 +112,89 @@ async def respond(
     await db.commit()
     await db.refresh(conn)
     return conn
+
+
+@router.get("/summary", response_model=NetworkSummaryOut)
+async def summary(current: CurrentUser, db: DbSession):
+    """Counts for the Network tabs and the home page."""
+    rows = await db.scalars(
+        select(Connection).where(
+            or_(Connection.requester_id == current.id, Connection.addressee_id == current.id)
+        )
+    )
+    counts = {"connected": 0, "received": 0, "sent": 0}
+    for c in rows:
+        s = state_of(c, current.id)
+        if s in counts:
+            counts[s] += 1
+    return NetworkSummaryOut(
+        connections=counts["connected"], received=counts["received"], sent=counts["sent"]
+    )
+
+
+@router.get("/network", response_model=list[NetworkItemOut])
+async def my_network(
+    current: CurrentUser,
+    db: DbSession,
+    view: Literal["connections", "received", "sent"] = "connections",
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=5000),
+):
+    """The member's own network with each person's card: accepted
+    connections, invitations waiting on them, or requests they sent."""
+    me = current.id
+    if view == "connections":
+        where = (Connection.status == "accepted") & or_(
+            Connection.requester_id == me, Connection.addressee_id == me
+        )
+    elif view == "received":
+        where = (Connection.status == "pending") & (Connection.addressee_id == me)
+    else:
+        # A declined request still reads as sent to its sender (see network.py).
+        where = Connection.status.in_(("pending", "declined")) & (Connection.requester_id == me)
+
+    conns = list(
+        await db.scalars(
+            select(Connection).where(where).order_by(Connection.created_at.desc(), Connection.id)
+            .limit(limit).offset(offset)
+        )
+    )
+    others = [c.addressee_id if c.requester_id == me else c.requester_id for c in conns]
+    rows = {
+        p.user_id: (p, synthetic)
+        for p, synthetic in await db.execute(
+            select(Profile, User.is_synthetic)
+            .join(User, User.id == Profile.user_id)
+            .where(Profile.user_id.in_(others), User.is_active.is_(True))
+        )
+    }
+    roles = await verified_roles(db, list(rows))
+    out = []
+    for c, other in zip(conns, others):
+        if other not in rows:
+            continue
+        p, synthetic = rows[other]
+        out.append(
+            NetworkItemOut(
+                id=c.id,
+                message=c.message,
+                created_at=c.created_at,
+                member=card(p, synthetic, roles.get(other, []), (state_of(c, me), c.id)),
+            )
+        )
+    return out
+
+
+@router.delete("/{conn_id}", status_code=204)
+async def withdraw_or_remove(conn_id: UUID, current: CurrentUser, db: DbSession):
+    """Withdraw a request you sent, or remove an existing connection. Either
+    side may remove a connection; only the sender may withdraw a request."""
+    conn = await db.get(Connection, conn_id)
+    if not conn or current.id not in (conn.requester_id, conn.addressee_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Connection not found")
+    mine = conn.requester_id == current.id
+    if conn.status == "accepted" or (mine and conn.status in ("pending", "declined")):
+        await db.delete(conn)
+        await db.commit()
+        return
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Connection not found")

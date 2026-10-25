@@ -1,7 +1,9 @@
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
+from typing import Literal
+
+from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -19,7 +21,7 @@ from app.schemas.profile import (
 )
 from app.models.user import User
 from app.services import affiliations as aff
-from app.services import demo
+from app.services import demo, network
 from app.services.storage import storage
 from app.services.uploads import DOC_TYPES, document_ext, image_ext
 from app.services.visibility import build_view, relation_to
@@ -62,10 +64,19 @@ async def update_my_profile(payload: ProfileUpdate, current: CurrentUser, db: Db
 
 
 @router.get("/{handle}", response_model=ProfileViewOut)
-async def view_profile(handle: str, viewer: OptionalUser, db: DbSession):
+async def view_profile(
+    handle: str,
+    viewer: OptionalUser,
+    db: DbSession,
+    preview: Literal["public", "member", "connection"] | None = Query(None, alias="as"),
+):
     """Someone else's profile, trimmed to what this viewer may see. Owners get
     pointed at /profiles/me so there is exactly one place the full record
-    leaves the API."""
+    leaves the API.
+
+    ?as= lets an owner preview their page as a logged-out visitor, a member
+    or a connection would see it. It is ignored for anyone else's profile, so
+    it can never widen what a viewer gets."""
     profile = await _load_full(db, handle=handle)
     rel = await relation_to(db, viewer, profile.user_id) if profile else None
     synthetic = bool(profile and await db.scalar(select(User.is_synthetic).where(User.id == profile.user_id)))
@@ -74,11 +85,22 @@ async def view_profile(handle: str, viewer: OptionalUser, db: DbSession):
     if not profile or rel is None:
         # Blocked looks exactly like missing, so a block can't be detected.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile not found")
-    if rel == "self":
-        rel = "connection"  # an owner previewing their own link sees the widest outside view
+    owner = rel == "self"
+    if owner:
+        # An owner previewing their own link sees the widest outside view
+        # unless they ask for a narrower one.
+        rel = preview or "connection"
     roles = (await aff.verified_roles(db, [profile.user_id])).get(profile.user_id, [])
-    recruiter = rel != "public" and viewer is not None and await aff.has_verified(db, viewer.id, ("recruiter",))
-    return build_view(profile, rel, roles, recruiter, is_demo=synthetic)
+    recruiter = (
+        not owner and rel != "public" and viewer is not None
+        and await aff.has_verified(db, viewer.id, ("recruiter",))
+    )
+    view = build_view(profile, rel, roles, recruiter, is_demo=synthetic)
+    if viewer is not None and not owner:
+        view.connection, view.connection_id = (
+            await network.states(db, viewer.id, [profile.user_id])
+        ).get(profile.user_id, ("none", None))
+    return view
 
 
 # --- Experience ---

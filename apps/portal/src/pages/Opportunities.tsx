@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { FiBriefcase, FiMapPin, FiPlus, FiCheck } from 'react-icons/fi'
+import { FiBriefcase, FiClock, FiMapPin, FiPlus, FiCheck } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { kindLabel, placeLabel, timeAgo } from '../lib/format'
 import type { Opportunity } from '../lib/types'
 import DemoBadge from '../components/DemoBadge'
 
@@ -53,12 +54,12 @@ export default function Opportunities() {
 
       {showForm && <PostForm onDone={() => { setShowForm(false); load() }} />}
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
         {kinds.map((k) => (
           <button
             key={k.value}
             onClick={() => setKind(k.value)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition ${
               kind === k.value ? 'bg-green-shine text-white' : 'bg-white text-navy/70'
             }`}
           >
@@ -79,16 +80,16 @@ export default function Opportunities() {
                   {o.title}
                   <DemoBadge show={o.is_demo} />
                 </p>
-                <p className="flex items-center gap-2 text-sm text-ink">
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
                   <span className="rounded bg-green/10 px-2 py-0.5 text-xs font-medium text-green-deep">
-                    {o.kind}
+                    {kindLabel(o.kind)}
                   </span>
-                  {o.remote ? 'Remote' : o.location || 'On-site'}
-                  {o.location && !o.remote && (
-                    <span className="flex items-center gap-1">
-                      <FiMapPin className="h-3 w-3" /> {o.location}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-1">
+                    <FiMapPin className="h-3 w-3" /> {placeLabel(o)}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs">
+                    <FiClock className="h-3 w-3" /> Posted {timeAgo(o.created_at)}
+                  </span>
                 </p>
               </div>
             </div>

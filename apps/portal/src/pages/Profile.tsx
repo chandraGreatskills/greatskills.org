@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck } from 'react-icons/fi'
+import { Link } from 'react-router-dom'
+import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck, FiEye } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
@@ -104,9 +105,13 @@ export default function Profile() {
             {profile.full_name}
           </h2>
           <p className="text-sm text-ink">{profile.headline || 'Add a headline'}</p>
-          <span className="mt-2 inline-block text-xs text-green-deep">
-            /in/{profile.handle}
-          </span>
+          <span className="mt-2 block text-xs text-ink">/in/{profile.handle}</span>
+          <Link
+            to={`/in/${profile.handle}?as=member`}
+            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-green-deep hover:underline"
+          >
+            <FiEye className="h-4 w-4" /> See how others view it
+          </Link>
           <div className="mt-4 flex flex-col gap-2">
             <Toggle
               label="Open to work"
@@ -204,7 +209,8 @@ export default function Profile() {
         </div>
 
         <RolesCard />
-        <ExperienceEditor profile={profile} reload={load} />
+        <EducationEditor profile={profile} reload={() => { load(); refreshMe() }} />
+        <ExperienceEditor profile={profile} reload={() => { load(); refreshMe() }} />
       </section>
     </div>
   )
@@ -334,6 +340,81 @@ function ExperienceEditor({ profile, reload }: { profile: ProfileT; reload: () =
               </p>
             </div>
             <button onClick={() => remove(exp.id)} className="text-navy/30 hover:text-red-500">
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function EducationEditor({ profile, reload }: { profile: ProfileT; reload: () => void }) {
+  const blank = { school: '', degree: '', field: '', start_year: '', end_year: '' }
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState(blank)
+  const [error, setError] = useState('')
+
+  const submit = async () => {
+    if (!form.school.trim()) return setError('Add the school or university name.')
+    try {
+      await api.post('/profiles/me/education', {
+        school: form.school.trim(),
+        degree: form.degree.trim() || null,
+        field: form.field.trim() || null,
+        start_year: form.start_year ? Number(form.start_year) : null,
+        end_year: form.end_year ? Number(form.end_year) : null,
+      })
+    } catch (err) {
+      return setError(err instanceof ApiError ? err.message : 'Could not save')
+    }
+    setForm(blank)
+    setError('')
+    setAdding(false)
+    reload()
+  }
+  const remove = async (id: string) => {
+    await api.del(`/profiles/me/education/${id}`)
+    reload()
+  }
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between">
+        <h3 className="font-serif text-lg font-semibold text-navy">Education</h3>
+        <button onClick={() => setAdding((v) => !v)} className="btn-ghost">
+          <FiPlus className="h-4 w-4" /> Add
+        </button>
+      </div>
+
+      {adding && (
+        <div className="mt-4 grid gap-3 rounded-xl bg-navy-50 p-4 sm:grid-cols-2">
+          <input className="field sm:col-span-2" placeholder="School or university" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} />
+          <input className="field" placeholder="Degree (e.g. B.Tech)" value={form.degree} onChange={(e) => setForm({ ...form, degree: e.target.value })} />
+          <input className="field" placeholder="Field of study" value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value })} />
+          <input className="field" inputMode="numeric" placeholder="Start year" value={form.start_year} onChange={(e) => setForm({ ...form, start_year: e.target.value })} />
+          <input className="field" inputMode="numeric" placeholder="End year (or expected)" value={form.end_year} onChange={(e) => setForm({ ...form, end_year: e.target.value })} />
+          {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+          <button onClick={submit} className="btn-green sm:col-span-2">
+            Save education
+          </button>
+        </div>
+      )}
+
+      <ul className="mt-4 space-y-3">
+        {profile.education.length === 0 && !adding && (
+          <p className="text-sm text-ink">No education added yet.</p>
+        )}
+        {profile.education.map((ed) => (
+          <li key={ed.id} className="flex items-start justify-between border-b border-navy/5 pb-3">
+            <div>
+              <p className="font-semibold text-navy">{ed.school}</p>
+              <p className="text-sm text-ink">
+                {[ed.degree, ed.field].filter(Boolean).join(', ')}
+                {ed.start_year && ` · ${ed.start_year}–${ed.end_year || 'Present'}`}
+              </p>
+            </div>
+            <button onClick={() => remove(ed.id)} className="text-navy/30 hover:text-red-500" aria-label={`Remove ${ed.school}`}>
               <FiTrash2 className="h-4 w-4" />
             </button>
           </li>

@@ -12,6 +12,7 @@ import Feed from './pages/Feed'
 import Members from './pages/Members'
 import Opportunities from './pages/Opportunities'
 import Profile from './pages/Profile'
+import MemberProfile from './pages/MemberProfile'
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/members" element={<Members />} />
             <Route path="/opportunities" element={<Opportunities />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/in/:handle" element={<MemberProfile />} />
             <Route path="/admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

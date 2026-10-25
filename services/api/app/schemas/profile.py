@@ -93,6 +93,10 @@ class ProfileCardOut(BaseModel):
     verified_roles: list[VerifiedRoleOut] = []
     # A demo member from the simulation engine; the portal shows a Demo badge.
     is_demo: bool = False
+    # Where the viewer stands with this member, so the card shows the right
+    # button: Connect, Pending, Accept or Message.
+    connection: Literal["none", "sent", "received", "connected"] = "none"
+    connection_id: UUID | None = None
 
 
 class ExperienceViewOut(BaseModel):
@@ -135,6 +139,10 @@ class ProfileViewOut(BaseModel):
     open_to_work: bool | None = None
     experiences: list[ExperienceViewOut] = []
     education: list[EducationOut] = []
+    # Same meaning as on the directory card. Left at "none" for logged-out
+    # visitors and for an owner previewing their own page.
+    connection: Literal["none", "sent", "received", "connected"] = "none"
+    connection_id: UUID | None = None
 
     @model_serializer(mode="wrap")
     def _omit_hidden(self, handler):

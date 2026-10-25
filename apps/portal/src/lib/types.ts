@@ -37,6 +37,53 @@ export type ProfileCard = {
   verified_roles: VerifiedRole[]
   // Demo member made by the simulation engine.
   is_demo?: boolean
+  // Where the signed-in member stands with this person.
+  connection: ConnectionState
+  connection_id?: string | null
+}
+
+export type ConnectionState = 'none' | 'sent' | 'received' | 'connected'
+
+// Someone else's profile, already trimmed by the API to what this viewer may
+// see. Fields they can't see are missing or empty.
+export type ProfileView = {
+  viewer: 'public' | 'member' | 'connection'
+  id: string
+  user_id?: string | null
+  handle: string
+  full_name: string
+  headline?: string | null
+  avatar_url?: string | null
+  member_type: string
+  location?: string | null
+  industry?: string | null
+  bio?: string | null
+  bio_truncated: boolean
+  skills: string[]
+  skills_truncated: boolean
+  interests: string[]
+  open_to_mentor: boolean
+  open_to_work?: boolean
+  verified_roles: VerifiedRole[]
+  is_demo: boolean
+  experiences: Experience[]
+  education: Education[]
+  connection: ConnectionState
+  connection_id?: string | null
+}
+
+// One person in the member's own network, with the link between them.
+export type NetworkItem = {
+  id: string
+  message?: string | null
+  created_at: string
+  member: ProfileCard
+}
+
+export type NetworkSummary = {
+  connections: number
+  received: number
+  sent: number
 }
 
 export type Profile = {
@@ -77,6 +124,7 @@ export type Opportunity = {
   skills_wanted: string[]
   posted_by: string
   status: string
+  created_at: string
   is_demo?: boolean
 }
 
