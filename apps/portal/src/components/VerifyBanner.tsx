@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 
 export default function VerifyBanner() {
-  const { me } = useAuth()
+  const { me, refreshMe } = useAuth()
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   if (!me || me.is_verified) return null
@@ -11,8 +11,10 @@ export default function VerifyBanner() {
   const resend = async () => {
     setStatus('sending')
     try {
-      await api.post('/auth/resend-verification')
-      setStatus('sent')
+      const r = await api.post<{ status: string }>('/auth/resend-verification')
+      // Confirmed in another tab or device: reload so the banner goes away.
+      if (r?.status === 'already_confirmed') await refreshMe()
+      else setStatus('sent')
     } catch {
       setStatus('error')
     }

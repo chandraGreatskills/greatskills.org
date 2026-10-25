@@ -93,7 +93,9 @@ async def add_affiliation(
         if org.status == "rejected":
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
-                "We couldn't verify this organization. Contact us if you think that's a mistake.",
+                f"{org.name} wasn't approved as an organization here, so roles there can't be verified. "
+                "You can keep using Great Skills under your own name. If you think this is a mistake, "
+                "write to us through the Contact page on the Great Skills website.",
             )
         if org.org_type != want_type:
             wrong = "a company" if org.org_type == "industry" else "a school or university"

@@ -7,6 +7,8 @@ that token. Everything made here is flagged is_synthetic and lives on .example
 addresses, which never receive mail, so none of it can be mistaken for a real
 member or reach a real inbox."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
@@ -29,6 +31,8 @@ def _require_sim(request: Request) -> None:
     if not is_sim(request):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
 
+
+STARTED_AT = datetime.now(timezone.utc)
 
 router = APIRouter(prefix="/sim", tags=["sim"], dependencies=[Depends(_require_sim)])
 
@@ -113,7 +117,14 @@ async def sim_status(db: DbSession):
         )
         for tag, n in rows:
             out.setdefault(tag or "", {})[name] = n
-    return {"demo_mode": await demo.demo_mode(db), "tags": out}
+    # The dev outbox lives in memory, so a restart empties it. started_at
+    # changing tells the engine to ask for its mail again.
+    return {
+        "demo_mode": await demo.demo_mode(db),
+        "tags": out,
+        "outbox": len(DEV_OUTBOX),
+        "started_at": STARTED_AT.isoformat(),
+    }
 
 
 @router.delete("/data", response_model=SimWipeOut)

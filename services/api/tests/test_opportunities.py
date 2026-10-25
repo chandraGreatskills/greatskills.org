@@ -138,3 +138,28 @@ async def test_apply_review_and_track(client, browser):
     assert r.status_code == 200
     mine = (await stu.get(f"{PREFIX}/opportunities/applications/mine")).json()
     assert [(m["status"], m["opportunity"]["title"]) for m in mine] == [("shortlisted", "Data Intern")]
+
+
+async def test_posting_for_an_org_explains_what_to_do(client, browser):
+    from uuid import UUID, uuid4
+
+    from app.db.base import SessionLocal
+    from app.models.organization import Affiliation, Organization
+
+    hr, me = await _join(browser, "hr@example.com", "Hiring Desk")
+    async with SessionLocal() as db:
+        pending = Organization(name="Lakeview University", slug="lakeview", org_type="academia", status="pending")
+        db.add(pending)
+        await db.flush()
+        db.add(Affiliation(user_id=UUID(me["id"]), org_id=pending.id, kind="faculty", email="hr@lakeview.edu",
+                           status="awaiting_org"))
+        await db.commit()
+        pending_id = pending.id
+
+    r = await hr.post(f"{PREFIX}/opportunities", json={"title": "Lab assistant", "org_id": str(pending_id)})
+    assert r.status_code == 403
+    assert "waiting for our team to approve" in r.json()["detail"]
+    assert "under your own name" in r.json()["detail"]
+
+    r = await hr.post(f"{PREFIX}/opportunities", json={"title": "Lab assistant", "org_id": str(uuid4())})
+    assert r.status_code == 403 and "Verified roles" in r.json()["detail"]

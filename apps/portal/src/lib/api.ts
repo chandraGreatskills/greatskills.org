@@ -59,16 +59,28 @@ async function raw(path: string, init: RequestInit = {}, retry = true): Promise<
   return res
 }
 
+// FastAPI explains a refused form as a list of field problems. Turn the first
+// one into a sentence instead of a bare "Request failed".
+function readable(detail: unknown): string {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail[0]?.msg) {
+    const field = Array.isArray(detail[0].loc) ? detail[0].loc[detail[0].loc.length - 1] : ''
+    const msg = String(detail[0].msg).replace(/^Value error, /, '')
+    return field && typeof field === 'string' ? `${field.replace(/_/g, ' ')}: ${msg}` : msg
+  }
+  return 'Request failed'
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let detail = res.statusText
+    let detail: unknown = res.statusText
     try {
       const body = await res.json()
       detail = body.detail || detail
     } catch {
       /* noop */
     }
-    throw new ApiError(res.status, typeof detail === 'string' ? detail : 'Request failed')
+    throw new ApiError(res.status, readable(detail))
   }
   if (res.status === 204) return undefined as T
   return res.json()

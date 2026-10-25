@@ -165,10 +165,13 @@ async def test_verify_token_cannot_log_in_and_access_token_cannot_verify(client,
 async def test_resend_only_when_unverified(client, monkeypatch):
     access, sent = await _register(client, monkeypatch)
 
-    assert (await client.post(f"{PREFIX}/auth/resend-verification")).status_code == 204
+    r = await client.post(f"{PREFIX}/auth/resend-verification")
+    assert r.status_code == 200 and r.json() == {"status": "sent"}
     assert len(sent) == 2
     await client.post(f"{PREFIX}/auth/verify-email", json={"token": sent[0][1]})
-    await client.post(f"{PREFIX}/auth/resend-verification")
+    # Already confirmed: nothing is sent, and the answer says so.
+    r = await client.post(f"{PREFIX}/auth/resend-verification")
+    assert r.json() == {"status": "already_confirmed"}
     assert len(sent) == 2
 
 

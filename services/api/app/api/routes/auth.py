@@ -316,12 +316,17 @@ async def verify_email(payload: VerifyEmailIn, db: DbSession):
     return {"verified": True}
 
 
-@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
-async def resend_verification(current: CurrentUser, db: DbSession):
+@router.post("/resend-verification")
+async def resend_verification(current: CurrentUser, db: DbSession) -> dict[str, str]:
+    """Send the confirmation link again. Says when the address is already
+    confirmed instead of quietly sending nothing, so nobody waits for mail
+    that was never sent."""
+    if current.is_verified:
+        return {"status": "already_confirmed"}
     if await over_limit("resend", str(current.id), 5):
         raise _slow_down()
-    if not current.is_verified:
-        await _send_verification(current, await _name(db, current.id))
+    await _send_verification(current, await _name(db, current.id))
+    return {"status": "sent"}
 
 
 @router.get("/me", response_model=MeOut)

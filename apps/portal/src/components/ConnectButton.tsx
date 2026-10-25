@@ -28,6 +28,7 @@ export default function ConnectButton({
   const [connId, setConnId] = useState(member.connection_id ?? null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [asking, setAsking] = useState(false)
 
   const set = (s: ConnectionState, id: string | null) => {
     setState(s)
@@ -47,9 +48,13 @@ export default function ConnectButton({
     }
   }
 
-  const connect = () =>
+  const connect = (message?: string) =>
     run(async () => {
-      const c = await api.post<{ id: string; status: string }>('/connections', { addressee_id: member.user_id })
+      const c = await api.post<{ id: string; status: string }>('/connections', {
+        addressee_id: member.user_id,
+        message: message?.trim() || null,
+      })
+      setAsking(false)
       set(c.status === 'accepted' ? 'connected' : 'sent', c.id)
     })
   const accept = () =>
@@ -90,7 +95,7 @@ export default function ConnectButton({
     )
   } else {
     button = (
-      <button onClick={connect} disabled={busy || blocked} className={base}
+      <button onClick={() => setAsking(true)} disabled={busy || blocked} className={base}
         title={blocked ? 'Demo profiles are for viewing only' : undefined}>
         <FiUserPlus className="h-4 w-4" /> Connect
       </button>
@@ -101,6 +106,62 @@ export default function ConnectButton({
     <div className={className}>
       {button}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {asking && (
+        <NoteDialog name={member.full_name} busy={busy} error={error} onSend={connect} onClose={() => setAsking(false)} />
+      )}
+    </div>
+  )
+}
+
+const NOTE_LIMIT = 300
+
+// LinkedIn-style: send the request as is, or with a short note. The limit is
+// shown as you type, so a long note never fails on send.
+function NoteDialog({
+  name,
+  busy,
+  error,
+  onSend,
+  onClose,
+}: {
+  name: string
+  busy: boolean
+  error: string
+  onSend: (message?: string) => void
+  onClose: () => void
+}) {
+  const [note, setNote] = useState('')
+  const left = NOTE_LIMIT - note.length
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-end bg-navy/40 text-left sm:place-items-center sm:p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-card sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Connect with ${name}`}
+      >
+        <h2 className="font-serif text-lg font-semibold text-navy">Connect with {name}</h2>
+        <p className="mb-3 text-sm text-ink">Add a note to say how you know them or why you'd like to connect.</p>
+        <textarea
+          className="field min-h-[110px]"
+          maxLength={NOTE_LIMIT}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Optional"
+          autoFocus
+        />
+        <p className={`mt-1 text-right text-xs ${left < 30 ? 'font-semibold text-amber-700' : 'text-ink'}`}>
+          {left} of {NOTE_LIMIT} characters left
+        </p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <div className="mt-4 flex gap-2">
+          <button onClick={() => onSend(note)} disabled={busy} className="btn-green flex-1">
+            {note.trim() ? 'Send with note' : 'Send without a note'}
+          </button>
+          <button onClick={onClose} className="btn-ghost">Cancel</button>
+        </div>
+      </div>
     </div>
   )
 }

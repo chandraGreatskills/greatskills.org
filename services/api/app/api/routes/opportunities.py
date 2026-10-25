@@ -10,7 +10,7 @@ from app.api.deps import CurrentUser, DbSession, OptionalUser
 from app.api.routes.members import _like, card
 from app.db.base import utcnow
 from app.models.opportunity import Application, Opportunity, SavedOpportunity
-from app.models.organization import Organization
+from app.models.organization import Affiliation, Organization
 from app.models.profile import Profile, Resume
 from app.models.user import User
 from app.services import demo
@@ -154,6 +154,38 @@ def _check_closing(closes_at: datetime | None) -> datetime | None:
     return closes_at
 
 
+async def _why_not_org(db, user_id: UUID, org_id: UUID) -> str:
+    """Say why someone can't post for an organization yet and what to do,
+    based only on their own role there. Someone with no role at all learns
+    nothing about the organization's review."""
+    row = (await db.execute(
+        select(Affiliation.status, Organization.name, Organization.status)
+        .join(Organization, Organization.id == Affiliation.org_id)
+        .where(
+            Affiliation.user_id == user_id,
+            Affiliation.org_id == org_id,
+            Affiliation.kind.in_(("recruiter", "faculty")),
+        )
+        .order_by(Affiliation.created_at.desc())
+        .limit(1)
+    )).first()
+    own_name = "You can post it under your own name now by leaving the organization off."
+    if row is None:
+        return (
+            "Posting for an organization needs a verified faculty or recruiter role there. "
+            "Add one under Verified roles on your profile using your school or work email. " + own_name
+        )
+    aff_status, name, org_status = row
+    if aff_status == "email_sent":
+        return f"Open the confirmation link we sent to your {name} email, then post again. {own_name}"
+    if aff_status == "awaiting_org" or org_status == "pending":
+        return (
+            f"{name} is still waiting for our team to approve it, so posts can't carry its name yet. "
+            f"{own_name} You can post for {name} once it's approved."
+        )
+    return f"Your role at {name} isn't verified, so you can't post for it. {own_name}"
+
+
 @router.get("", response_model=list[OpportunityOut])
 async def list_opportunities(
     db: DbSession,
@@ -250,7 +282,7 @@ async def create_opportunity(payload: OpportunityIn, current: CurrentUser, db: D
         if current.role != "admin" and not await has_verified(
             db, current.id, ("recruiter", "faculty"), payload.org_id
         ):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Posting for an organization needs a verified role there")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, await _why_not_org(db, current.id, payload.org_id))
         org = await db.get(Organization, payload.org_id)
         if not org or org.status != "approved":
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
