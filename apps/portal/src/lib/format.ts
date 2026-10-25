@@ -35,6 +35,45 @@ const MEMBER_LABEL: Record<string, string> = {
 }
 export const memberLabel = (type: string) => MEMBER_LABEL[type] ?? type
 
-// "Remote" or the place, never both, and never the same place twice.
-export const placeLabel = (o: { remote: boolean; location?: string | null }) =>
-  o.remote ? (o.location ? `Remote · ${o.location}` : 'Remote') : o.location || 'On-site'
+// "Remote", the place, or both, but never the same word twice.
+export const placeLabel = (o: { remote: boolean; location?: string | null }) => {
+  const place = o.location?.trim()
+  const said = place && /^remote$/i.test(place) ? '' : place
+  if (o.remote) return said ? `Remote · ${said}` : 'Remote'
+  return place || 'On-site'
+}
+
+// "Closes today", "Closes in 3 days", "Closes 12 Nov", or "Closed".
+export function closesLabel(o: { closes_at?: string | null; is_open: boolean }, now = Date.now()) {
+  if (!o.is_open) return { text: 'Closed', urgent: false }
+  if (!o.closes_at) return null
+  // Count calendar days, so a date picked 5 days out reads "in 5 days".
+  const midnight = (t: number) => new Date(t).setHours(0, 0, 0, 0)
+  const days = Math.round((midnight(new Date(o.closes_at).getTime()) - midnight(now)) / DAY)
+  if (days <= 0) return { text: 'Closes today', urgent: true }
+  if (days === 1) return { text: 'Closes tomorrow', urgent: true }
+  if (days <= 7) return { text: `Closes in ${days} days`, urgent: true }
+  return {
+    text: `Closes ${new Date(o.closes_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`,
+    urgent: false,
+  }
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  submitted: 'Applied',
+  reviewed: 'Viewed by poster',
+  shortlisted: 'Shortlisted',
+  rejected: 'Not selected',
+  accepted: 'Offer',
+}
+export const statusLabel = (s: string) => STATUS_LABEL[s] ?? s
+
+// A date picker gives "2026-11-15"; the opening should stay open through the
+// end of that day where the poster is.
+export const endOfDay = (date: string) => (date ? new Date(`${date}T23:59:59`).toISOString() : null)
+export const dateInput = (iso?: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

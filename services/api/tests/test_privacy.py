@@ -194,7 +194,8 @@ async def test_macro_word_files_are_refused(client, browser):
 async def test_cannot_apply_with_someone_elses_resume(client, browser):
     _, _, resume = await _owner_with_data(browser)
     h2, _ = await _join(browser, "ravi@example.com", "Ravi Iyer")
-    opp = (await h2.post(f"{PREFIX}/opportunities", json={"title": "Analyst"})).json()
+    poster, _ = await _join(browser, "hr@example.com", "Hiring Desk")
+    opp = (await poster.post(f"{PREFIX}/opportunities", json={"title": "Analyst"})).json()
     r = await h2.post(f"{PREFIX}/opportunities/{opp['id']}/apply",
                           json={"resume_id": resume["id"]})
     assert r.status_code == 404

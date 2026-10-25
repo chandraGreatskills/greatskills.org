@@ -122,10 +122,42 @@ export type Opportunity = {
   remote: boolean
   description?: string | null
   skills_wanted: string[]
+  pay?: string | null
+  eligibility?: string | null
+  closes_at?: string | null
+  org_id?: string | null
   posted_by: string
+  // open | closed, as set by the poster. is_open also accounts for the date.
   status: string
   created_at: string
   is_demo?: boolean
+  is_open: boolean
+  org?: { name: string; slug: string; logo_url?: string | null; verified: boolean } | null
+  poster?: { full_name: string; handle: string; avatar_url?: string | null } | null
+  applicants: number
+  mine: boolean
+  saved: boolean
+  // submitted | reviewed | shortlisted | rejected | accepted
+  applied_status?: string | null
+}
+
+export type MyApplication = {
+  id: string
+  status: string
+  cover_note?: string | null
+  created_at: string
+  updated_at: string
+  opportunity: Opportunity
+}
+
+export type Applicant = {
+  id: string
+  status: string
+  cover_note?: string | null
+  created_at: string
+  has_resume: boolean
+  resume_filename?: string | null
+  member: ProfileCard
 }
 
 export type RoleKind = 'student' | 'faculty' | 'recruiter'

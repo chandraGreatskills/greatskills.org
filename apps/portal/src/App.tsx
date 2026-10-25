@@ -11,6 +11,7 @@ import Admin from './pages/Admin'
 import Feed from './pages/Feed'
 import Members from './pages/Members'
 import Opportunities from './pages/Opportunities'
+import OpportunityDetail from './pages/OpportunityDetail'
 import Profile from './pages/Profile'
 import MemberProfile from './pages/MemberProfile'
 
@@ -29,6 +30,7 @@ export default function App() {
             <Route index element={<Feed />} />
             <Route path="/members" element={<Members />} />
             <Route path="/opportunities" element={<Opportunities />} />
+            <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/in/:handle" element={<MemberProfile />} />
             <Route path="/admin" element={<Admin />} />

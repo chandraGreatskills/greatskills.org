@@ -83,7 +83,7 @@ export default function Feed() {
         <SectionHead title="Latest opportunities" to="/opportunities" />
         <div className="grid gap-3 sm:grid-cols-2">
           {opps.map((o) => (
-            <Link key={o.id} to="/opportunities" className="card transition hover:shadow-card">
+            <Link key={o.id} to={`/opportunities/${o.id}`} className="card transition hover:shadow-card">
               <p className="flex items-center gap-2 font-semibold text-navy">
                 {o.title}
                 <DemoBadge show={o.is_demo} />
