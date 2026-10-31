@@ -76,7 +76,7 @@ export default function ConnectButton({
   // Real members can't reach demo accounts, so don't offer a button that fails.
   const blocked = !member.user_id || (member.is_demo && !me?.is_synthetic)
   const base = pill
-    ? 'btn w-full rounded-full border border-navy/60 bg-white px-4 py-1.5 font-semibold text-navy hover:border-navy hover:bg-navy-50'
+    ? 'btn w-full rounded-full border border-navy/60 bg-white px-4 py-1 text-sm font-semibold text-navy hover:border-navy hover:bg-navy-50'
     : 'btn-ghost w-full px-4 py-2'
 
   let button

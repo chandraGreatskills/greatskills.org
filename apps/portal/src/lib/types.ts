@@ -41,6 +41,8 @@ export type ProfileCard = {
   connection: ConnectionState
   connection_id?: string | null
   mutual_connections: number
+  mutual_name?: string | null
+  mutual_avatar?: string | null
 }
 
 export type ConnectionState = 'none' | 'sent' | 'received' | 'connected'

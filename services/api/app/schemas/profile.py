@@ -97,8 +97,11 @@ class ProfileCardOut(BaseModel):
     # button: Connect, Pending, Accept or Message.
     connection: Literal["none", "sent", "received", "connected"] = "none"
     connection_id: UUID | None = None
-    # Connections the viewer and this member share.
+    # Connections the viewer and this member share, and one of them to name
+    # on the card ("Ravi is a mutual connection").
     mutual_connections: int = 0
+    mutual_name: str | None = None
+    mutual_avatar: str | None = None
 
 
 class ExperienceViewOut(BaseModel):

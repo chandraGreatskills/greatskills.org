@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FiCheckCircle, FiMapPin, FiUsers } from 'react-icons/fi'
+import { FiCheckCircle, FiMapPin, FiX } from 'react-icons/fi'
 import { memberLabel } from '../lib/format'
 import { ROLE_LABEL } from '../lib/roles'
 import type { ProfileCard } from '../lib/types'
@@ -9,56 +9,72 @@ import DemoBadge from './DemoBadge'
 
 // Soft cover colors by member type, so a page of cards isn't one flat color.
 const COVER: Record<string, string> = {
-  student: 'from-[#dfe9f5] to-[#e6f0dc]',
-  academia: 'from-[#e3e4f3] to-[#dfe9f5]',
-  industry: 'from-[#dcebe8] to-[#e6f0dc]',
-  mentor: 'from-[#f3ead9] to-[#e6f0dc]',
+  student: 'from-[#c9d9ec] to-[#d7e6c6]',
+  academia: 'from-[#cfd2ea] to-[#c9d9ec]',
+  industry: 'from-[#c6dfd9] to-[#d7e6c6]',
+  mentor: 'from-[#eadcbf] to-[#d7e6c6]',
 }
 
-// A suggestion card in the "People you may know" style: cover band, large
-// photo, name, two lines of headline, one verified role, and either mutual
-// connections or location. The whole top half opens the profile.
-export default function MemberCard({ m }: { m: ProfileCard }) {
-  const role = m.verified_roles?.[0]
+function first(name: string) {
+  return name.replace(/^(Dr|Prof)\.?\s+/i, '').split(' ')[0]
+}
+
+// "Ravi Iyer is a mutual connection" / "Ravi and 2 other mutual connections".
+function mutualText(m: ProfileCard) {
+  const n = m.mutual_connections
+  if (!m.mutual_name) return `${n} mutual connection${n === 1 ? '' : 's'}`
+  if (n === 1) return `${m.mutual_name} is a mutual connection`
+  return `${first(m.mutual_name)} and ${n - 1} other mutual connection${n === 2 ? '' : 's'}`
+}
+
+// A compact suggestion card in the "People you may know" style.
+export default function MemberCard({ m, onDismiss }: { m: ProfileCard; onDismiss?: () => void }) {
+  const roles = m.verified_roles ?? []
+  const verified = roles.map((r) => `Verified ${ROLE_LABEL[r.kind].toLowerCase()} · ${r.org_name}`).join('\n')
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-sm transition hover:shadow-md">
-      <Link to={`/in/${m.handle}`} className="group flex flex-1 flex-col items-center px-5 text-center">
-        <div className={`-mx-5 h-16 self-stretch bg-gradient-to-r ${COVER[m.member_type] ?? COVER.student}`} />
-        <div className="-mt-10 rounded-full ring-4 ring-white">
+    <div className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-navy/10 bg-white">
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          title="Not now"
+          aria-label={`Hide ${m.full_name}`}
+          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-navy/70 text-white hover:bg-navy"
+        >
+          <FiX className="h-4 w-4" />
+        </button>
+      )}
+      <Link to={`/in/${m.handle}`} className="group flex flex-1 flex-col items-center px-4 text-center">
+        <div className={`-mx-4 h-14 self-stretch bg-gradient-to-r ${COVER[m.member_type] ?? COVER.student}`} />
+        <div className="-mt-11 rounded-full ring-2 ring-white">
           <Avatar name={m.full_name} url={m.avatar_url} size="xl" />
         </div>
-        <p className="mt-3 flex max-w-full items-center justify-center gap-2">
-          <span className="truncate text-base font-semibold text-navy group-hover:underline">{m.full_name}</span>
-          <DemoBadge show={m.is_demo} />
+        <p className="mt-2 flex max-w-full items-center justify-center gap-1">
+          <span className="truncate text-[15px] font-semibold text-navy group-hover:underline">{m.full_name}</span>
+          {roles.length > 0 && (
+            <span title={verified} className="shrink-0 text-green-deep">
+              <FiCheckCircle className="h-4 w-4" />
+            </span>
+          )}
         </p>
+        <DemoBadge show={m.is_demo} className="mt-0.5" />
         <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-ink">
           {m.headline || <span className="italic text-ink/70">{memberLabel(m.member_type)}</span>}
         </p>
-        {role && (
-          <p className="mt-2 flex max-w-full items-center gap-1 text-xs font-medium text-green-deep" title={`Verified ${ROLE_LABEL[role.kind].toLowerCase()} at ${role.org_name}`}>
-            <FiCheckCircle className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {ROLE_LABEL[role.kind]} · {role.org_name}
-            </span>
-          </p>
-        )}
-        <p className="mb-4 mt-auto flex max-w-full items-center gap-1 pt-3 text-xs text-ink">
+        <div className="mb-3 mt-auto flex min-h-[2rem] max-w-full items-center gap-2 pt-2 text-left text-xs leading-4 text-ink">
           {m.mutual_connections > 0 ? (
             <>
-              <FiUsers className="h-3.5 w-3.5 shrink-0" />
-              {m.mutual_connections} mutual connection{m.mutual_connections === 1 ? '' : 's'}
+              {m.mutual_name && <Avatar name={m.mutual_name} url={m.mutual_avatar} size="xs" />}
+              <span className="line-clamp-2">{mutualText(m)}</span>
             </>
           ) : m.location ? (
             <>
               <FiMapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{m.location}</span>
             </>
-          ) : (
-            <span>&nbsp;</span>
-          )}
-        </p>
+          ) : null}
+        </div>
       </Link>
-      <ConnectButton member={m} pill className="px-5 pb-5" />
+      <ConnectButton member={m} pill className="px-4 pb-4" />
     </div>
   )
 }

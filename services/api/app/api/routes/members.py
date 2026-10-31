@@ -76,17 +76,35 @@ async def search_members(
     roles = await verified_roles(db, ids)
     links = await network.states(db, current.id, ids)
     mutual = await network.mutual_counts(db, current.id, ids)
-    return [
-        card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id), mutual.get(p.user_id, 0))
-        for p, synthetic in rows
-    ]
+    samples = {}
+    if mutual:
+        sample_ids = {s for _, s in mutual.values()}
+        samples = {
+            uid: (name, avatar)
+            for uid, name, avatar in (
+                await db.execute(
+                    select(Profile.user_id, Profile.full_name, Profile.avatar_url).where(
+                        Profile.user_id.in_(sample_ids)
+                    )
+                )
+            ).all()
+        }
+    out = []
+    for p, synthetic in rows:
+        count, sample = mutual.get(p.user_id, (0, None))
+        name, avatar = samples.get(sample, (None, None))
+        c = card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id), count)
+        c.mutual_name, c.mutual_avatar = name, avatar
+        out.append(c)
+    return out
 
 
 def card(p: Profile, synthetic: bool, roles: list, link=None, mutual: int = 0) -> ProfileCardOut:
     state, conn_id = link or ("none", None)
     return ProfileCardOut(
         **ProfileCardOut.model_validate(p).model_dump(
-            exclude={"verified_roles", "is_demo", "connection", "connection_id", "mutual_connections"}
+            exclude={"verified_roles", "is_demo", "connection", "connection_id", "mutual_connections",
+                     "mutual_name", "mutual_avatar"}
         ),
         mutual_connections=mutual,
         verified_roles=roles,

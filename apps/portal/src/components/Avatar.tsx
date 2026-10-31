@@ -1,7 +1,9 @@
 import { fileUrl } from '../lib/api'
 
 const SIZES = {
+  xs: 'h-6 w-6 text-[10px]',
   sm: 'h-10 w-10 text-sm',
+  row: 'h-16 w-16 text-xl',
   md: 'h-14 w-14 text-lg',
   xl: 'h-24 w-24 text-3xl',
   lg: 'h-28 w-28 text-3xl',

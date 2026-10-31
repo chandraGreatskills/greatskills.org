@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FiSearch } from 'react-icons/fi'
+import { FiMoreHorizontal, FiSearch } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
 import { memberLabel, timeAgo } from '../lib/format'
 import type { NetworkItem, NetworkSummary, ProfileCard } from '../lib/types'
@@ -86,6 +86,8 @@ function Discover() {
   const [members, setMembers] = useState<ProfileCard[]>([])
   const [more, setMore] = useState(false)
   const [notice, setNotice] = useState('')
+  // Suggestions the member waved away with the ×, for this visit.
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
 
   const search = async (offset = 0) => {
     const params = new URLSearchParams({ scope: 'discover', limit: String(PAGE), offset: String(offset) })
@@ -139,10 +141,12 @@ function Discover() {
         ))}
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {members.map((m) => (
-          <MemberCard key={m.id} m={m} />
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {members
+          .filter((m) => !hidden.has(m.id))
+          .map((m) => (
+            <MemberCard key={m.id} m={m} onDismiss={() => setHidden((h) => new Set(h).add(m.id))} />
+          ))}
         {notice && <p className="text-sm text-ink">{notice}</p>}
         {!notice && members.length === 0 && (
           <p className="text-sm text-ink">No members match your search yet.</p>
@@ -199,7 +203,7 @@ function MyNetwork({ tab, onChange }: { tab: Exclude<Tab, 'discover'>; onChange:
     : items
 
   return (
-    <div className="card p-0">
+    <div className="overflow-hidden rounded-xl border border-navy/10 bg-white">
       {items.length > 8 && (
         <div className="border-b border-navy/5 p-4">
           <input
@@ -215,50 +219,51 @@ function MyNetwork({ tab, onChange }: { tab: Exclude<Tab, 'discover'>; onChange:
         {shown.map((item) => {
           const m = item.member
           return (
-            <li key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-              <Link to={`/in/${m.handle}`} className="flex min-w-0 flex-1 items-center gap-3">
-                <Avatar name={m.full_name} url={m.avatar_url} size="sm" />
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-semibold text-navy">
-                    <span className="truncate hover:underline">{m.full_name}</span>
+            <li key={item.id} className="flex items-start gap-4 px-5 py-4 sm:items-center">
+              <Link to={`/in/${m.handle}`} className="shrink-0">
+                <Avatar name={m.full_name} url={m.avatar_url} size="row" />
+              </Link>
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                <Link to={`/in/${m.handle}`} className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2">
+                    <span className="truncate text-base font-semibold text-navy hover:underline">{m.full_name}</span>
                     <DemoBadge show={m.is_demo} />
                   </p>
-                  <Headline m={m} />
+                  <p className="line-clamp-2 text-sm text-ink">{m.headline || memberLabel(m.member_type)}</p>
                   {tab === 'invitations' && item.message && (
                     <p className="mt-1 rounded-lg bg-navy-50 px-3 py-1.5 text-sm text-navy">“{item.message}”</p>
                   )}
-                  <p className="text-xs text-ink/80">
-                    {tab === 'connections' ? 'Connected' : tab === 'sent' ? 'Sent' : 'Received'} {timeAgo(item.created_at)}
+                  <p className="mt-0.5 text-xs text-ink/80">
+                    {tab === 'connections'
+                      ? `Connected on ${new Date(item.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}`
+                      : `${tab === 'sent' ? 'Sent' : 'Received'} ${timeAgo(item.created_at)}`}
                   </p>
+                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  {tab === 'invitations' && (
+                    <>
+                      <button onClick={() => respond(item.id, false)} className={`${PILL} border-transparent text-ink hover:bg-navy-50`}>
+                        Ignore
+                      </button>
+                      <button onClick={() => respond(item.id, true)} className={`${PILL} border-navy text-navy hover:bg-navy-50`}>
+                        Accept
+                      </button>
+                    </>
+                  )}
+                  {tab === 'sent' && (
+                    <button onClick={() => drop(item, `Withdraw your request to ${m.full_name}?`)} className={`${PILL} border-navy/40 text-navy hover:bg-navy-50`}>
+                      Withdraw
+                    </button>
+                  )}
+                  {tab === 'connections' && (
+                    <>
+                      <Link to={`/in/${m.handle}`} className={`${PILL} border-navy text-navy hover:bg-navy-50`}>
+                        View profile
+                      </Link>
+                      <RowMenu onRemove={() => drop(item, `Remove ${m.full_name} from your connections?`)} />
+                    </>
+                  )}
                 </div>
-              </Link>
-              <div className="flex shrink-0 gap-2">
-                {tab === 'invitations' && (
-                  <>
-                    <button onClick={() => respond(item.id, false)} className="btn-ghost px-4 py-2">
-                      Ignore
-                    </button>
-                    <button onClick={() => respond(item.id, true)} className="btn-green px-4 py-2">
-                      Accept
-                    </button>
-                  </>
-                )}
-                {tab === 'sent' && (
-                  <button
-                    onClick={() => drop(item, `Withdraw your request to ${m.full_name}?`)}
-                    className="btn-ghost px-4 py-2"
-                  >
-                    Withdraw
-                  </button>
-                )}
-                {tab === 'connections' && (
-                  <button
-                    onClick={() => drop(item, `Remove ${m.full_name} from your connections?`)}
-                    className="px-3 py-2 text-xs text-ink hover:text-red-600"
-                  >
-                    Remove
-                  </button>
-                )}
               </div>
             </li>
           )
@@ -273,4 +278,30 @@ function MyNetwork({ tab, onChange }: { tab: Exclude<Tab, 'discover'>; onChange:
 export function Headline({ m }: { m: { headline?: string | null; member_type: string } }) {
   if (m.headline) return <p className="truncate text-sm text-ink">{m.headline}</p>
   return <p className="text-sm italic text-ink/70">{memberLabel(m.member_type)}</p>
+}
+
+const PILL = 'inline-flex items-center rounded-full border px-4 py-1 text-sm font-semibold transition'
+
+// The "…" next to a connection: less common actions, out of the way.
+function RowMenu({ onRemove }: { onRemove: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        aria-label="More actions"
+        className="grid h-8 w-8 place-items-center rounded-full text-navy/70 hover:bg-navy-50"
+      >
+        <FiMoreHorizontal className="h-5 w-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 w-48 rounded-lg border border-navy/10 bg-white py-1 shadow-lg">
+          <button onClick={onRemove} className="block w-full px-4 py-2 text-left text-sm text-navy hover:bg-navy-50">
+            Remove connection
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }

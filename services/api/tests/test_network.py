@@ -64,6 +64,7 @@ async def test_discover_counts_mutual_connections(client, browser):
         await responder.post(f"{PREFIX}/connections/{conn['id']}/respond?accept=true")
     cards = (await a.get(f"{PREFIX}/members?scope=discover")).json()
     assert [(x["full_name"], x["mutual_connections"]) for x in cards] == [("Dev Lal", 2)]
+    assert cards[0]["mutual_name"] in {"Bilal Khan", "Chitra Iyer"}
     lone, _ = await _join(browser, "eve@example.com", "Eve Moss")
     assert all(x["mutual_connections"] == 0 for x in (await lone.get(f"{PREFIX}/members")).json())
 

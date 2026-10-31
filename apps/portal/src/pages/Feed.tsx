@@ -98,7 +98,7 @@ export default function Feed() {
 
       <section>
         <SectionHead title="People you may know" to="/members" />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {members.map((m) => (
             <MemberCard key={m.id} m={m} />
           ))}

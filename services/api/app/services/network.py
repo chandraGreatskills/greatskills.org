@@ -64,9 +64,12 @@ def linked_with(viewer_id: UUID):
     )
 
 
-async def mutual_counts(db: AsyncSession, viewer_id: UUID, others: list[UUID]) -> dict[UUID, int]:
-    """How many connections the viewer shares with each member in `others`.
-    Members with none are left out."""
+async def mutual_counts(
+    db: AsyncSession, viewer_id: UUID, others: list[UUID]
+) -> dict[UUID, tuple[int, UUID]]:
+    """For each member in `others`: how many connections the viewer shares
+    with them, and one of those shared people to name on the card. Members
+    with none are left out."""
     if not others:
         return {}
     mine = set(await db.scalars(accepted_with(viewer_id)))
@@ -82,10 +85,11 @@ async def mutual_counts(db: AsyncSession, viewer_id: UUID, others: list[UUID]) -
         )
     )
     wanted = set(others)
-    out: dict[UUID, int] = {}
+    out: dict[UUID, tuple[int, UUID]] = {}
     for a, b in rows:
-        member = a if a in wanted and b in mine else b
-        out[member] = out.get(member, 0) + 1
+        member, shared = (a, b) if a in wanted and b in mine else (b, a)
+        count, sample = out.get(member, (0, shared))
+        out[member] = (count + 1, sample)
     return out
 
 
