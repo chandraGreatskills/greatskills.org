@@ -39,8 +39,9 @@ async def search_members(
     let any member list everyone who is job hunting. Postgres full-text search
     replaces the ilike filter at scale.
 
-    scope=discover leaves out people the member is already connected to, for
-    suggestions. Each card says where the member stands with that person."""
+    scope=discover leaves out people the member is already connected to or
+    has a pending request with, for suggestions. Each card says where the
+    member stands with that person and how many connections they share."""
     blocked = select(Connection.addressee_id).where(
         (Connection.requester_id == current.id) & (Connection.status == "blocked")
     ).union(
@@ -65,7 +66,7 @@ async def search_members(
             )
         )
     if scope == "discover":
-        stmt = stmt.where(Profile.user_id.not_in(network.accepted_with(current.id)))
+        stmt = stmt.where(Profile.user_id.not_in(network.linked_with(current.id)))
     if member_type in MEMBER_TYPES:
         stmt = stmt.where(Profile.member_type == member_type)
 
@@ -74,15 +75,20 @@ async def search_members(
     ids = [p.user_id for p, _ in rows]
     roles = await verified_roles(db, ids)
     links = await network.states(db, current.id, ids)
-    return [card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id)) for p, synthetic in rows]
+    mutual = await network.mutual_counts(db, current.id, ids)
+    return [
+        card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id), mutual.get(p.user_id, 0))
+        for p, synthetic in rows
+    ]
 
 
-def card(p: Profile, synthetic: bool, roles: list, link=None) -> ProfileCardOut:
+def card(p: Profile, synthetic: bool, roles: list, link=None, mutual: int = 0) -> ProfileCardOut:
     state, conn_id = link or ("none", None)
     return ProfileCardOut(
         **ProfileCardOut.model_validate(p).model_dump(
-            exclude={"verified_roles", "is_demo", "connection", "connection_id"}
+            exclude={"verified_roles", "is_demo", "connection", "connection_id", "mutual_connections"}
         ),
+        mutual_connections=mutual,
         verified_roles=roles,
         is_demo=synthetic,
         connection=state,

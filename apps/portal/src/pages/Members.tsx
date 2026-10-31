@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FiSearch, FiMapPin } from 'react-icons/fi'
+import { FiSearch } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
 import { memberLabel, timeAgo } from '../lib/format'
 import type { NetworkItem, NetworkSummary, ProfileCard } from '../lib/types'
 import Avatar from '../components/Avatar'
-import ConnectButton from '../components/ConnectButton'
+import MemberCard from '../components/MemberCard'
 import DemoBadge from '../components/DemoBadge'
-import RoleBadges from '../components/RoleBadges'
 
 const PAGE = 20
 
@@ -140,27 +139,9 @@ function Discover() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {members.map((m) => (
-          <div key={m.id} className="card flex min-w-0 flex-col p-5">
-            <Link to={`/in/${m.handle}`} className="flex min-w-0 items-start gap-3 hover:opacity-90">
-              <Avatar name={m.full_name} url={m.avatar_url} />
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 font-semibold text-navy">
-                  <span className="truncate hover:underline">{m.full_name}</span>
-                  <DemoBadge show={m.is_demo} />
-                </p>
-                <Headline m={m} />
-                <RoleBadges roles={m.verified_roles} />
-              </div>
-            </Link>
-            {m.location && (
-              <p className="mt-3 flex items-center gap-1 text-xs text-ink">
-                <FiMapPin className="h-3 w-3" /> {m.location}
-              </p>
-            )}
-            <ConnectButton member={m} className="mt-auto pt-4" />
-          </div>
+          <MemberCard key={m.id} m={m} />
         ))}
         {notice && <p className="text-sm text-ink">{notice}</p>}
         {!notice && members.length === 0 && (

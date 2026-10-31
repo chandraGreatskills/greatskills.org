@@ -97,6 +97,8 @@ class ProfileCardOut(BaseModel):
     # button: Connect, Pending, Accept or Message.
     connection: Literal["none", "sent", "received", "connected"] = "none"
     connection_id: UUID | None = None
+    # Connections the viewer and this member share.
+    mutual_connections: int = 0
 
 
 class ExperienceViewOut(BaseModel):

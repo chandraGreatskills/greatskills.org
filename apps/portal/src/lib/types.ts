@@ -40,6 +40,7 @@ export type ProfileCard = {
   // Where the signed-in member stands with this person.
   connection: ConnectionState
   connection_id?: string | null
+  mutual_connections: number
 }
 
 export type ConnectionState = 'none' | 'sent' | 'received' | 'connected'

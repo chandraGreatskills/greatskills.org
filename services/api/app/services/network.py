@@ -52,6 +52,43 @@ async def states(
     return out
 
 
+def linked_with(viewer_id: UUID):
+    """User ids the viewer is connected to or has a pending request with,
+    in either direction, as a subquery. Discover leaves these out: they
+    already live under My connections, Invitations or Sent."""
+    live = Connection.status.in_(("accepted", "pending"))
+    return select(Connection.addressee_id).where(
+        (Connection.requester_id == viewer_id) & live
+    ).union(
+        select(Connection.requester_id).where((Connection.addressee_id == viewer_id) & live)
+    )
+
+
+async def mutual_counts(db: AsyncSession, viewer_id: UUID, others: list[UUID]) -> dict[UUID, int]:
+    """How many connections the viewer shares with each member in `others`.
+    Members with none are left out."""
+    if not others:
+        return {}
+    mine = set(await db.scalars(accepted_with(viewer_id)))
+    if not mine:
+        return {}
+    rows = await db.execute(
+        select(Connection.requester_id, Connection.addressee_id).where(
+            Connection.status == "accepted",
+            or_(
+                Connection.requester_id.in_(others) & Connection.addressee_id.in_(mine),
+                Connection.addressee_id.in_(others) & Connection.requester_id.in_(mine),
+            ),
+        )
+    )
+    wanted = set(others)
+    out: dict[UUID, int] = {}
+    for a, b in rows:
+        member = a if a in wanted and b in mine else b
+        out[member] = out.get(member, 0) + 1
+    return out
+
+
 def accepted_with(viewer_id: UUID):
     """User ids the viewer is connected to, as a subquery."""
     return select(Connection.addressee_id).where(

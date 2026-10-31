@@ -18,10 +18,13 @@ export default function ConnectButton({
   member,
   onChange,
   className = '',
+  pill = false,
 }: {
   member: Target
   onChange?: (state: ConnectionState, connectionId: string | null) => void
   className?: string
+  // Rounded outline button, for suggestion cards.
+  pill?: boolean
 }) {
   const { me } = useAuth()
   const [state, setState] = useState(member.connection)
@@ -72,7 +75,9 @@ export default function ConnectButton({
 
   // Real members can't reach demo accounts, so don't offer a button that fails.
   const blocked = !member.user_id || (member.is_demo && !me?.is_synthetic)
-  const base = 'btn-ghost w-full px-4 py-2'
+  const base = pill
+    ? 'btn w-full rounded-full border border-navy/60 bg-white px-4 py-1.5 font-semibold text-navy hover:border-navy hover:bg-navy-50'
+    : 'btn-ghost w-full px-4 py-2'
 
   let button
   if (state === 'connected') {
@@ -83,7 +88,7 @@ export default function ConnectButton({
     )
   } else if (state === 'received') {
     button = (
-      <button onClick={accept} disabled={busy || blocked} className="btn-green w-full px-4 py-2">
+      <button onClick={accept} disabled={busy || blocked} className={`btn-green w-full ${pill ? 'rounded-full py-1.5' : 'px-4 py-2'}`}>
         <FiCheck className="h-4 w-4" /> Accept
       </button>
     )

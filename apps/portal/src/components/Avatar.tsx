@@ -3,6 +3,7 @@ import { fileUrl } from '../lib/api'
 const SIZES = {
   sm: 'h-10 w-10 text-sm',
   md: 'h-14 w-14 text-lg',
+  xl: 'h-24 w-24 text-3xl',
   lg: 'h-28 w-28 text-3xl',
 }
 

@@ -42,6 +42,32 @@ async def test_discover_leaves_out_existing_connections(client, browser):
     assert names == {"Chitra Iyer"}
 
 
+async def test_discover_leaves_out_pending_requests_both_ways(client, browser):
+    a, me_a, b, me_b = await _pair(browser)
+    c, me_c = await _join(browser, "chitra@example.com", "Chitra Iyer")
+    await _join(browser, "dev@example.com", "Dev Lal")
+    await _send(a, me_b)           # a sent to b
+    await _send(c, me_a)           # c sent to a
+    names = {x["full_name"] for x in (await a.get(f"{PREFIX}/members?scope=discover")).json()}
+    assert names == {"Dev Lal"}
+    # the full directory still lists everyone, with the right state
+    assert (await _card(a, "Chitra Iyer"))["connection"] == "received"
+
+
+async def test_discover_counts_mutual_connections(client, browser):
+    a, me_a, b, me_b = await _pair(browser)
+    c, me_c = await _join(browser, "chitra@example.com", "Chitra Iyer")
+    d, me_d = await _join(browser, "dev@example.com", "Dev Lal")
+    for x, other in ((a, me_b), (a, me_c), (d, me_b), (d, me_c)):
+        conn = await _send(x, other)
+        responder = b if other is me_b else c
+        await responder.post(f"{PREFIX}/connections/{conn['id']}/respond?accept=true")
+    cards = (await a.get(f"{PREFIX}/members?scope=discover")).json()
+    assert [(x["full_name"], x["mutual_connections"]) for x in cards] == [("Dev Lal", 2)]
+    lone, _ = await _join(browser, "eve@example.com", "Eve Moss")
+    assert all(x["mutual_connections"] == 0 for x in (await lone.get(f"{PREFIX}/members")).json())
+
+
 async def test_connecting_back_accepts_their_request(client, browser):
     a, me_a, b, me_b = await _pair(browser)
     conn = await _send(a, me_b)

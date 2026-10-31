@@ -6,10 +6,8 @@ import { api } from '../lib/api'
 import { completion } from '../lib/completion'
 import { kindLabel, placeLabel, timeAgo } from '../lib/format'
 import type { NetworkSummary, Opportunity, ProfileCard } from '../lib/types'
-import Avatar from '../components/Avatar'
-import ConnectButton from '../components/ConnectButton'
+import MemberCard from '../components/MemberCard'
 import DemoBadge from '../components/DemoBadge'
-import { Headline } from './Members'
 
 export default function Feed() {
   const { me } = useAuth()
@@ -100,19 +98,9 @@ export default function Feed() {
 
       <section>
         <SectionHead title="People you may know" to="/members" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {members.map((m) => (
-            <div key={m.id} className="card flex min-w-0 flex-col p-5 text-center">
-              <Link to={`/in/${m.handle}`} className="flex w-full min-w-0 flex-col items-center">
-                <Avatar name={m.full_name} url={m.avatar_url} />
-                <p className="mt-2 max-w-full truncate font-medium text-navy hover:underline">{m.full_name}</p>
-                <DemoBadge show={m.is_demo} className="mt-1" />
-                <div className="w-full min-w-0">
-                  <Headline m={m} />
-                </div>
-              </Link>
-              <ConnectButton member={m} className="mt-auto pt-3" />
-            </div>
+            <MemberCard key={m.id} m={m} />
           ))}
           {members.length === 0 && <p className="text-sm text-ink">No suggestions right now.</p>}
         </div>
