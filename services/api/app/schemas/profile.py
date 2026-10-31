@@ -76,6 +76,16 @@ class ProfileOut(BaseModel):
     resumes: list[ResumeOut] = []
 
 
+class MemberMini(BaseModel):
+    """Just enough to show someone as a small photo with a name."""
+
+    user_id: UUID
+    handle: str
+    full_name: str
+    avatar_url: str | None = None
+    headline: str | None = None
+
+
 class ProfileCardOut(BaseModel):
     """The directory card: enough to recognize someone and send a request,
     nothing more. user_id is what connection requests address."""
@@ -97,11 +107,13 @@ class ProfileCardOut(BaseModel):
     # button: Connect, Pending, Accept or Message.
     connection: Literal["none", "sent", "received", "connected"] = "none"
     connection_id: UUID | None = None
-    # Connections the viewer and this member share, and one of them to name
-    # on the card ("Ravi is a mutual connection").
+    # Common ground with the viewer, to explain a suggestion: how many
+    # connections they share (with up to three of them to show), verified
+    # schools or employers in common, and skills both list.
     mutual_connections: int = 0
-    mutual_name: str | None = None
-    mutual_avatar: str | None = None
+    mutual_sample: list["MemberMini"] = []
+    shared_orgs: list[str] = []
+    shared_skills: list[str] = []
 
 
 class ExperienceViewOut(BaseModel):

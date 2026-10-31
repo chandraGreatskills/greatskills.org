@@ -64,7 +64,22 @@ async def test_discover_counts_mutual_connections(client, browser):
         await responder.post(f"{PREFIX}/connections/{conn['id']}/respond?accept=true")
     cards = (await a.get(f"{PREFIX}/members?scope=discover")).json()
     assert [(x["full_name"], x["mutual_connections"]) for x in cards] == [("Dev Lal", 2)]
-    assert cards[0]["mutual_name"] in {"Bilal Khan", "Chitra Iyer"}
+    assert {m["full_name"] for m in cards[0]["mutual_sample"]} == {"Bilal Khan", "Chitra Iyer"}
+    full = (await a.get(f"{PREFIX}/members/{me_d['id']}/mutual")).json()
+    assert [m["full_name"] for m in full] == ["Bilal Khan", "Chitra Iyer"]
+    assert set(full[0]) == {"user_id", "handle", "full_name", "avatar_url", "headline"}
+
+
+async def test_cards_show_shared_skills(client, browser):
+    a, _, b, _ = await _pair(browser)
+    await a.patch(f"{PREFIX}/profiles/me", json={"skills": ["Python", "SQL", "Excel"]})
+    await b.patch(f"{PREFIX}/profiles/me", json={"skills": ["sql", "Java", "Python"]})
+    assert (await _card(a, "Bilal Khan"))["shared_skills"] == ["sql", "Python"]
+
+
+async def test_mutual_list_needs_sign_in(client, browser):
+    _, _, _, me_b = await _pair(browser)
+    assert (await client.get(f"{PREFIX}/members/{me_b['id']}/mutual")).status_code == 401
     lone, _ = await _join(browser, "eve@example.com", "Eve Moss")
     assert all(x["mutual_connections"] == 0 for x in (await lone.get(f"{PREFIX}/members")).json())
 

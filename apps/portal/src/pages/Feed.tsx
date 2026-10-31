@@ -21,7 +21,7 @@ export default function Feed() {
     api.get<{ open: number }>('/opportunities/count').then((r) => setOpenCount(r.open)).catch(() => {})
     api.get<Opportunity[]>('/opportunities?limit=4').then(setOpps).catch(() => {})
     // Suggestions skip people already connected, and pending ones show as Pending.
-    api.get<ProfileCard[]>('/members?scope=discover&limit=4').then(setMembers).catch(() => {})
+    api.get<ProfileCard[]>('/members?scope=discover&limit=3').then(setMembers).catch(() => {})
   }, [])
 
   const p = me?.profile
@@ -98,7 +98,7 @@ export default function Feed() {
 
       <section>
         <SectionHead title="People you may know" to="/members" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {members.map((m) => (
             <MemberCard key={m.id} m={m} />
           ))}

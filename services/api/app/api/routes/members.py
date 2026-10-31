@@ -1,13 +1,16 @@
 from typing import Literal
 
-from fastapi import APIRouter, Query
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import or_, select
 
 from app.api.deps import DbSession, VerifiedUser
 from app.models.connection import Connection
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.profile import ProfileCardOut
+from app.schemas.profile import MemberMini, ProfileCardOut
+from app.services.visibility import relation_to
 from app.services import demo, network
 from app.services.affiliations import verified_roles
 
@@ -75,38 +78,67 @@ async def search_members(
     ids = [p.user_id for p, _ in rows]
     roles = await verified_roles(db, ids)
     links = await network.states(db, current.id, ids)
-    mutual = await network.mutual_counts(db, current.id, ids)
-    samples = {}
-    if mutual:
-        sample_ids = {s for _, s in mutual.values()}
-        samples = {
-            uid: (name, avatar)
-            for uid, name, avatar in (
-                await db.execute(
-                    select(Profile.user_id, Profile.full_name, Profile.avatar_url).where(
-                        Profile.user_id.in_(sample_ids)
-                    )
-                )
-            ).all()
+    common = await common_ground(db, current.id, rows, roles)
+    return [
+        card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id)).model_copy(update=common.get(p.user_id, {}))
+        for p, synthetic in rows
+    ]
+
+
+async def _minis(db, user_ids) -> dict:
+    if not user_ids:
+        return {}
+    found = await db.execute(
+        select(Profile.user_id, Profile.handle, Profile.full_name, Profile.avatar_url, Profile.headline)
+        .where(Profile.user_id.in_(user_ids))
+    )
+    return {r.user_id: MemberMini(**r._mapping) for r in found}
+
+
+async def common_ground(db, viewer_id: UUID, rows, roles: dict) -> dict:
+    """Why the viewer might know each member: shared connections, verified
+    schools or employers in common, and skills both list."""
+    ids = [p.user_id for p, _ in rows]
+    shared = await network.mutuals(db, viewer_id, ids)
+    minis = await _minis(db, {u for people in shared.values() for u in people[:3]})
+    mine = await verified_roles(db, [viewer_id])
+    my_orgs = {r["org_slug"]: r["org_name"] for r in mine.get(viewer_id, [])}
+    my_skills = {
+        s.lower(): s
+        for s in (await db.scalar(select(Profile.skills).where(Profile.user_id == viewer_id))) or []
+    }
+    out = {}
+    for p, _ in rows:
+        people = shared.get(p.user_id, [])
+        orgs = sorted({my_orgs[r["org_slug"]] for r in roles.get(p.user_id, []) if r["org_slug"] in my_orgs})
+        skills = [s for s in (p.skills or []) if s.lower() in my_skills][:3]
+        out[p.user_id] = {
+            "mutual_connections": len(people),
+            "mutual_sample": [minis[u] for u in people[:3] if u in minis],
+            "shared_orgs": orgs,
+            "shared_skills": skills,
         }
-    out = []
-    for p, synthetic in rows:
-        count, sample = mutual.get(p.user_id, (0, None))
-        name, avatar = samples.get(sample, (None, None))
-        c = card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id), count)
-        c.mutual_name, c.mutual_avatar = name, avatar
-        out.append(c)
     return out
 
 
-def card(p: Profile, synthetic: bool, roles: list, link=None, mutual: int = 0) -> ProfileCardOut:
+@router.get("/{user_id}/mutual", response_model=list[MemberMini])
+async def mutual_connections(user_id: UUID, current: VerifiedUser, db: DbSession):
+    """Everyone the viewer and this member are both connected to. Only people
+    the viewer is already connected to come back, so nothing new is revealed."""
+    if await relation_to(db, current, user_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    shared = (await network.mutuals(db, current.id, [user_id])).get(user_id, [])
+    minis = await _minis(db, shared)
+    return sorted((minis[u] for u in shared if u in minis), key=lambda m: m.full_name)
+
+
+def card(p: Profile, synthetic: bool, roles: list, link=None) -> ProfileCardOut:
     state, conn_id = link or ("none", None)
     return ProfileCardOut(
         **ProfileCardOut.model_validate(p).model_dump(
             exclude={"verified_roles", "is_demo", "connection", "connection_id", "mutual_connections",
-                     "mutual_name", "mutual_avatar"}
+                     "mutual_sample", "shared_orgs", "shared_skills"}
         ),
-        mutual_connections=mutual,
         verified_roles=roles,
         is_demo=synthetic,
         connection=state,

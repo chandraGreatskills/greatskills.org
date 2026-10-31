@@ -41,8 +41,9 @@ export type ProfileCard = {
   connection: ConnectionState
   connection_id?: string | null
   mutual_connections: number
-  mutual_name?: string | null
-  mutual_avatar?: string | null
+  mutual_sample: MemberMini[]
+  shared_orgs: string[]
+  shared_skills: string[]
 }
 
 export type ConnectionState = 'none' | 'sent' | 'received' | 'connected'
@@ -216,4 +217,13 @@ export type DemoSetting = {
   members: number
   organizations: number
   opportunities: number
+}
+
+// A member shown as a small photo and name, e.g. in a mutual connections list.
+export type MemberMini = {
+  user_id: string
+  handle: string
+  full_name: string
+  avatar_url?: string | null
+  headline?: string | null
 }
