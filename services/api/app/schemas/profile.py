@@ -114,6 +114,9 @@ class ProfileCardOut(BaseModel):
     mutual_sample: list["MemberMini"] = []
     shared_orgs: list[str] = []
     shared_skills: list[str] = []
+    shared_interests: list[str] = []
+    # The city, when the viewer lives in the same one.
+    shared_city: str | None = None
 
 
 class ExperienceViewOut(BaseModel):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiAward, FiCheckCircle, FiMapPin, FiX } from 'react-icons/fi'
+import { FiBookOpen, FiBriefcase, FiCheckCircle, FiHeart, FiMapPin, FiSettings, FiUsers, FiX } from 'react-icons/fi'
 import { api } from '../lib/api'
 import { memberLabel } from '../lib/format'
 import { ROLE_LABEL } from '../lib/roles'
@@ -11,6 +11,10 @@ import DemoBadge from './DemoBadge'
 
 function first(name: string) {
   return name.replace(/^(Dr|Prof)\.?\s+/i, '').split(' ')[0]
+}
+
+function cap(s: string) {
+  return s.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function shortOrg(name: string) {
@@ -26,7 +30,24 @@ export default function MemberCard({ m, onDismiss }: { m: ProfileCard; onDismiss
   const verified = roles.map((r) => `Verified ${ROLE_LABEL[r.kind].toLowerCase()} · ${r.org_name}`).join('\n')
   const sample = m.mutual_sample ?? []
   const n = m.mutual_connections
-  const hasCommon = n > 0 || m.shared_orgs?.length > 0 || m.shared_skills?.length > 0
+  // What this member and the viewer share, as short icon + word items. The
+  // full sentence is in each item's tooltip.
+  const common: { key: string; Icon: typeof FiUsers; text: string; tip: string }[] = [
+    ...(m.shared_orgs ?? []).map((o) => ({
+      key: `o-${o}`,
+      Icon: /university|institute|college|school/i.test(o) ? FiBookOpen : FiBriefcase,
+      text: shortOrg(o),
+      tip: `Both at ${o}`,
+    })),
+    ...(m.shared_city ? [{ key: 'city', Icon: FiMapPin, text: cap(m.shared_city), tip: `Both in ${cap(m.shared_city)}` }] : []),
+    ...(m.shared_skills?.length
+      ? [{ key: 'skills', Icon: FiSettings, text: m.shared_skills.slice(0, 2).join(', '), tip: `Skills you both list: ${m.shared_skills.join(', ')}` }]
+      : []),
+    ...(m.shared_interests?.length
+      ? [{ key: 'int', Icon: FiHeart, text: m.shared_interests.slice(0, 2).join(', '), tip: `Interests you share: ${m.shared_interests.join(', ')}` }]
+      : []),
+  ]
+  const hasCommon = n > 0 || common.length > 0
 
   return (
     <div className="flex min-w-0 flex-col rounded-2xl border border-navy/10 bg-white p-4 transition hover:border-green/40 hover:shadow-sm">
@@ -48,39 +69,37 @@ export default function MemberCard({ m, onDismiss }: { m: ProfileCard; onDismiss
         </div>
       </Link>
 
-      <div className="mt-3 flex min-h-[3.25rem] flex-col justify-start gap-1.5 border-t border-navy/5 pt-3 text-xs text-ink">
-        {n > 0 && (
-          <button onClick={() => setShowMutual(true)} className="flex items-center gap-2 text-left hover:text-navy">
-            <span className="flex shrink-0">
-              {sample.map((p, i) => (
-                <span key={p.user_id} className={`rounded-full ring-2 ring-white ${i ? '-ml-2' : ''}`}>
-                  <Avatar name={p.full_name} url={p.avatar_url} size="xs" />
+      <div className="mt-3 min-h-[3.75rem] border-t border-navy/5 pt-3 text-xs text-ink">
+        {hasCommon ? (
+          <>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/60">In common</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {n > 0 && (
+                <button
+                  onClick={() => setShowMutual(true)}
+                  title={`You both know ${sample.map((p) => p.full_name).join(', ')}${n > sample.length ? ` and ${n - sample.length} more` : ''}. Click to see everyone.`}
+                  className="flex items-center gap-1.5 font-medium text-navy hover:underline"
+                >
+                  <FiUsers className="h-3.5 w-3.5 shrink-0 text-green-deep" />
+                  {sample[0] ? first(sample[0].full_name) : `${n} people`}
+                  {sample[0] && n > 1 ? ` + ${n - 1}` : ''}
+                </button>
+              )}
+              {common.map(({ key, Icon, text, tip }) => (
+                <span key={key} title={tip} className="flex min-w-0 max-w-full items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-green-deep" />
+                  <span className="truncate">{text}</span>
                 </span>
               ))}
+            </div>
+          </>
+        ) : (
+          m.location && (
+            <span className="flex items-center gap-1.5">
+              <FiMapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{m.location}</span>
             </span>
-            <span className="font-medium underline-offset-2 hover:underline">
-              You both know {sample[0] ? first(sample[0].full_name) : `${n} people`}
-              {sample[0] && n > 1 ? ` and ${n - 1} other${n === 2 ? '' : 's'}` : ''}
-            </span>
-          </button>
-        )}
-        {m.shared_orgs?.map((o) => (
-          <span key={o} className="flex items-center gap-2">
-            <FiCheckCircle className="h-3.5 w-3.5 shrink-0 text-green-deep" />
-            <span className="truncate">Both at {shortOrg(o)}</span>
-          </span>
-        ))}
-        {m.shared_skills?.length > 0 && (
-          <span className="flex items-center gap-2">
-            <FiAward className="h-3.5 w-3.5 shrink-0 text-green-deep" />
-            <span className="truncate">You both list {m.shared_skills.join(', ')}</span>
-          </span>
-        )}
-        {!hasCommon && m.location && (
-          <span className="flex items-center gap-2">
-            <FiMapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{m.location}</span>
-          </span>
+          )
         )}
       </div>
 

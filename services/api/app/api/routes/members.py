@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 
 from app.api.deps import DbSession, VerifiedUser
 from app.models.connection import Connection
-from app.models.profile import Profile
+from app.models.profile import Education, Profile
 from app.models.user import User
 from app.schemas.profile import MemberMini, ProfileCardOut
 from app.services.visibility import relation_to
@@ -15,6 +15,8 @@ from app.services import demo, network
 from app.services.affiliations import verified_roles
 
 router = APIRouter(prefix="/members", tags=["members"])
+
+DISCOVER_POOL = 500
 
 MEMBER_TYPES = {"member", "student", "academia", "industry", "mentor"}
 
@@ -73,12 +75,25 @@ async def search_members(
     if member_type in MEMBER_TYPES:
         stmt = stmt.where(Profile.member_type == member_type)
 
-    stmt = stmt.order_by(Profile.created_at.desc(), Profile.id).limit(limit).offset(offset)
-    rows = (await db.execute(stmt)).all()
+    stmt = stmt.order_by(Profile.created_at.desc(), Profile.id)
+    if scope == "discover":
+        # Suggestions are ranked by how much the member has in common with
+        # each person, so the whole candidate pool is scored before paging.
+        # Capped, which is plenty until the network is large enough to need
+        # a precomputed suggestions table.
+        rows = (await db.execute(stmt.limit(DISCOVER_POOL))).all()
+        roles = await verified_roles(db, [p.user_id for p, _ in rows])
+        common = await common_ground(db, current.id, rows, roles)
+        rows.sort(key=lambda r: -common[r[0].user_id].pop("_score"))
+        rows = rows[offset : offset + limit]
+    else:
+        rows = (await db.execute(stmt.limit(limit).offset(offset))).all()
+        roles = await verified_roles(db, [p.user_id for p, _ in rows])
+        common = await common_ground(db, current.id, rows, roles)
+        for c in common.values():
+            c.pop("_score")
     ids = [p.user_id for p, _ in rows]
-    roles = await verified_roles(db, ids)
     links = await network.states(db, current.id, ids)
-    common = await common_ground(db, current.id, rows, roles)
     return [
         card(p, synthetic, roles.get(p.user_id, []), links.get(p.user_id)).model_copy(update=common.get(p.user_id, {}))
         for p, synthetic in rows
@@ -95,28 +110,61 @@ async def _minis(db, user_ids) -> dict:
     return {r.user_id: MemberMini(**r._mapping) for r in found}
 
 
+def _city(location: str | None) -> str | None:
+    # "Hyderabad, India" and "hyderabad" are the same place.
+    return location.split(",")[0].strip().lower() or None if location else None
+
+
+async def _schools(db, user_ids) -> dict:
+    """Schools from each member's education, lowercased, for matching."""
+    out: dict = {}
+    if user_ids:
+        found = await db.execute(
+            select(Profile.user_id, Education.school)
+            .join(Education, Education.profile_id == Profile.id)
+            .where(Profile.user_id.in_(user_ids))
+        )
+        for uid, school in found:
+            out.setdefault(uid, {})[school.strip().lower()] = school.strip()
+    return out
+
+
 async def common_ground(db, viewer_id: UUID, rows, roles: dict) -> dict:
-    """Why the viewer might know each member: shared connections, verified
-    schools or employers in common, and skills both list."""
+    """Why the viewer might know each member: shared connections, schools or
+    employers in common (verified roles and education), the same city, and
+    skills or interests both list. "_score" ranks suggestions; callers drop
+    it before responding."""
     ids = [p.user_id for p, _ in rows]
     shared = await network.mutuals(db, viewer_id, ids)
     minis = await _minis(db, {u for people in shared.values() for u in people[:3]})
     mine = await verified_roles(db, [viewer_id])
     my_orgs = {r["org_slug"]: r["org_name"] for r in mine.get(viewer_id, [])}
-    my_skills = {
-        s.lower(): s
-        for s in (await db.scalar(select(Profile.skills).where(Profile.user_id == viewer_id))) or []
-    }
+    me = (await db.execute(
+        select(Profile.skills, Profile.interests, Profile.location).where(Profile.user_id == viewer_id)
+    )).first()
+    my_skills = {s.lower() for s in (me.skills if me else None) or []}
+    my_interests = {s.lower() for s in (me.interests if me else None) or []}
+    my_city = _city(me.location) if me else None
+    schools = await _schools(db, [viewer_id, *ids])
+    my_places = {**schools.get(viewer_id, {}), **{n.lower(): n for n in my_orgs.values()}}
+
     out = {}
     for p, _ in rows:
         people = shared.get(p.user_id, [])
-        orgs = sorted({my_orgs[r["org_slug"]] for r in roles.get(p.user_id, []) if r["org_slug"] in my_orgs})
+        theirs = {r["org_name"].lower(): r["org_name"] for r in roles.get(p.user_id, [])}
+        theirs.update(schools.get(p.user_id, {}))
+        orgs = sorted({my_places[k] for k in theirs if k in my_places})
         skills = [s for s in (p.skills or []) if s.lower() in my_skills][:3]
+        interests = [s for s in (p.interests or []) if s.lower() in my_interests][:3]
+        city = p.location.split(",")[0].strip() if my_city and _city(p.location) == my_city else None
         out[p.user_id] = {
             "mutual_connections": len(people),
             "mutual_sample": [minis[u] for u in people[:3] if u in minis],
             "shared_orgs": orgs,
             "shared_skills": skills,
+            "shared_interests": interests,
+            "shared_city": city,
+            "_score": 3 * len(people) + 3 * len(orgs) + len(skills) + len(interests) + (1 if city else 0),
         }
     return out
 
@@ -137,7 +185,7 @@ def card(p: Profile, synthetic: bool, roles: list, link=None) -> ProfileCardOut:
     return ProfileCardOut(
         **ProfileCardOut.model_validate(p).model_dump(
             exclude={"verified_roles", "is_demo", "connection", "connection_id", "mutual_connections",
-                     "mutual_sample", "shared_orgs", "shared_skills"}
+                     "mutual_sample", "shared_orgs", "shared_skills", "shared_interests", "shared_city"}
         ),
         verified_roles=roles,
         is_demo=synthetic,

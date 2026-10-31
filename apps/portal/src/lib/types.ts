@@ -44,6 +44,8 @@ export type ProfileCard = {
   mutual_sample: MemberMini[]
   shared_orgs: string[]
   shared_skills: string[]
+  shared_interests: string[]
+  shared_city?: string | null
 }
 
 export type ConnectionState = 'none' | 'sent' | 'received' | 'connected'

@@ -77,6 +77,28 @@ async def test_cards_show_shared_skills(client, browser):
     assert (await _card(a, "Bilal Khan"))["shared_skills"] == ["sql", "Python"]
 
 
+async def test_cards_show_city_interests_and_schools(client, browser):
+    a, _, b, _ = await _pair(browser)
+    await a.patch(f"{PREFIX}/profiles/me", json={"location": "Pune, India", "interests": ["AI", "Climate"]})
+    await b.patch(f"{PREFIX}/profiles/me", json={"location": "pune", "interests": ["climate", "Design"]})
+    for who in (a, b):
+        await who.post(f"{PREFIX}/profiles/me/education", json={"school": "Deccan Institute of Technology"})
+    c = await _card(a, "Bilal Khan")
+    assert c["shared_city"] == "pune"
+    assert c["shared_interests"] == ["climate"]
+    assert c["shared_orgs"] == ["Deccan Institute of Technology"]
+
+
+async def test_discover_ranks_most_in_common_first(client, browser):
+    a, _, _, _ = await _pair(browser)          # Bilal: nothing in common
+    near, _ = await _join(browser, "chitra@example.com", "Chitra Iyer")
+    await a.patch(f"{PREFIX}/profiles/me", json={"skills": ["Python", "SQL"], "location": "Pune"})
+    await near.patch(f"{PREFIX}/profiles/me", json={"skills": ["Python", "SQL"], "location": "Pune"})
+    names = [x["full_name"] for x in (await a.get(f"{PREFIX}/members?scope=discover")).json()]
+    assert names[0] == "Chitra Iyer"
+    assert all("_score" not in x for x in (await a.get(f"{PREFIX}/members")).json())
+
+
 async def test_mutual_list_needs_sign_in(client, browser):
     _, _, _, me_b = await _pair(browser)
     assert (await client.get(f"{PREFIX}/members/{me_b['id']}/mutual")).status_code == 401
