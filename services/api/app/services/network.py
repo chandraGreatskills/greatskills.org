@@ -13,6 +13,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.connection import Connection
+from app.models.profile import Profile
+from app.schemas.profile import MemberMini
 
 State = Literal["none", "sent", "received", "connected"]
 
@@ -100,3 +102,14 @@ def accepted_with(viewer_id: UUID):
             (Connection.addressee_id == viewer_id) & (Connection.status == "accepted")
         )
     )
+
+
+async def minis(db: AsyncSession, user_ids) -> dict[UUID, MemberMini]:
+    """Small photo-and-name cards for a set of members, by user id."""
+    if not user_ids:
+        return {}
+    found = await db.execute(
+        select(Profile.user_id, Profile.handle, Profile.full_name, Profile.avatar_url, Profile.headline)
+        .where(Profile.user_id.in_(list(user_ids)))
+    )
+    return {r.user_id: MemberMini(**r._mapping) for r in found}

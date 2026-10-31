@@ -76,6 +76,10 @@ export type ProfileView = {
   education: Education[]
   connection: ConnectionState
   connection_id?: string | null
+  degree?: '1st' | '2nd' | '3rd+' | null
+  connection_count?: number | null
+  mutual_connections: number
+  mutual_sample: MemberMini[]
 }
 
 // One person in the member's own network, with the link between them.

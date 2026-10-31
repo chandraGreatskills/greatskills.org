@@ -100,16 +100,6 @@ async def search_members(
     ]
 
 
-async def _minis(db, user_ids) -> dict:
-    if not user_ids:
-        return {}
-    found = await db.execute(
-        select(Profile.user_id, Profile.handle, Profile.full_name, Profile.avatar_url, Profile.headline)
-        .where(Profile.user_id.in_(user_ids))
-    )
-    return {r.user_id: MemberMini(**r._mapping) for r in found}
-
-
 def _city(location: str | None) -> str | None:
     # "Hyderabad, India" and "hyderabad" are the same place.
     return location.split(",")[0].strip().lower() or None if location else None
@@ -136,7 +126,7 @@ async def common_ground(db, viewer_id: UUID, rows, roles: dict) -> dict:
     it before responding."""
     ids = [p.user_id for p, _ in rows]
     shared = await network.mutuals(db, viewer_id, ids)
-    minis = await _minis(db, {u for people in shared.values() for u in people[:3]})
+    minis = await network.minis(db, {u for people in shared.values() for u in people[:3]})
     mine = await verified_roles(db, [viewer_id])
     my_orgs = {r["org_slug"]: r["org_name"] for r in mine.get(viewer_id, [])}
     me = (await db.execute(
@@ -176,7 +166,7 @@ async def mutual_connections(user_id: UUID, current: VerifiedUser, db: DbSession
     if await relation_to(db, current, user_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     shared = (await network.mutuals(db, current.id, [user_id])).get(user_id, [])
-    minis = await _minis(db, shared)
+    minis = await network.minis(db, shared)
     return sorted((minis[u] for u in shared if u in minis), key=lambda m: m.full_name)
 
 

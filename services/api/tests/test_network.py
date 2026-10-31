@@ -184,3 +184,19 @@ async def test_open_count_is_a_real_total(client, browser):
     assert (await a.get(f"{PREFIX}/opportunities/count")).json() == {"open": 25}
     first = (await a.get(f"{PREFIX}/opportunities?limit=1")).json()[0]
     assert "created_at" in first
+
+
+async def test_profile_shows_degree_and_mutuals_to_members_only(client, browser):
+    a, me_a, b, me_b = await _pair(browser)
+    c, me_c = await _join(browser, "chitra@example.com", "Chitra Iyer")
+    for x, other, responder in ((a, me_b, b), (b, me_c, c)):
+        conn = await _send(x, other)
+        await responder.post(f"{PREFIX}/connections/{conn['id']}/respond?accept=true")
+    handle_c = me_c["profile"]["handle"]
+    view = (await a.get(f"{PREFIX}/profiles/{handle_c}")).json()
+    assert view["degree"] == "2nd" and view["mutual_connections"] == 1
+    assert view["mutual_sample"][0]["full_name"] == "Bilal Khan"
+    assert view["connection_count"] == 1
+    assert (await a.get(f"{PREFIX}/profiles/{me_b['profile']['handle']}")).json()["degree"] == "1st"
+    public = (await client.get(f"{PREFIX}/profiles/{handle_c}")).json()
+    assert public["degree"] is None and public["connection_count"] is None and public["mutual_sample"] == []

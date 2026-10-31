@@ -4,7 +4,7 @@ from uuid import UUID
 from typing import Literal
 
 from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser
@@ -100,6 +100,19 @@ async def view_profile(
         view.connection, view.connection_id = (
             await network.states(db, viewer.id, [profile.user_id])
         ).get(profile.user_id, ("none", None))
+    if rel != "public":
+        # Signed-in viewers get the network context: connection count, who
+        # they both know, and how far apart they are. Logged-out visitors and
+        # owner previews of the public view get none of it.
+        view.connection_count = await db.scalar(
+            select(func.count()).select_from(network.accepted_with(profile.user_id).subquery())
+        )
+        if viewer is not None and not owner:
+            shared = (await network.mutuals(db, viewer.id, [profile.user_id])).get(profile.user_id, [])
+            minis = await network.minis(db, shared[:3])
+            view.mutual_connections = len(shared)
+            view.mutual_sample = [minis[u] for u in shared[:3] if u in minis]
+            view.degree = "1st" if view.connection == "connected" else "2nd" if shared else "3rd+"
     return view
 
 

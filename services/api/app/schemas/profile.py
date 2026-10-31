@@ -163,6 +163,12 @@ class ProfileViewOut(BaseModel):
     # visitors and for an owner previewing their own page.
     connection: Literal["none", "sent", "received", "connected"] = "none"
     connection_id: UUID | None = None
+    # How far the viewer is from this member: 1st (connected), 2nd (they
+    # share a connection) or 3rd+. None for logged-out visitors.
+    degree: Literal["1st", "2nd", "3rd+"] | None = None
+    connection_count: int | None = None
+    mutual_connections: int = 0
+    mutual_sample: list[MemberMini] = []
 
     @model_serializer(mode="wrap")
     def _omit_hidden(self, handler):
