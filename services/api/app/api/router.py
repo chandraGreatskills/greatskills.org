@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     connections,
     contact,
+    home,
     members,
     newsletter,
     opportunities,
@@ -17,6 +18,7 @@ from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(home.router)
 api_router.include_router(profiles.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(members.router)

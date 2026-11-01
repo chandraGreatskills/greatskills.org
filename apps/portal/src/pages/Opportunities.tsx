@@ -28,7 +28,8 @@ const TABS: { value: Tab; label: string }[] = [
 export default function Opportunities() {
   const [params, setParams] = useSearchParams()
   const tab = (params.get('tab') as Tab) || 'browse'
-  const [posting, setPosting] = useState(false)
+  // ?post=1 opens the form straight away, for the Post an opening button on home.
+  const [posting, setPosting] = useState(params.get('post') === '1')
   const navigate = useNavigate()
 
   return (

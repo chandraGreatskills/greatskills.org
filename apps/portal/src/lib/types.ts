@@ -253,3 +253,42 @@ export type Recommendation = {
   updated_at: string
   person: MemberMini
 }
+
+export type HomeRole = 'student' | 'seeker' | 'mentor' | 'employer' | 'campus' | 'admin'
+
+export type HomeOpening = {
+  id: string
+  title: string
+  kind: string
+  org_name?: string | null
+  location?: string | null
+  remote: boolean
+  closes_at?: string | null
+  created_at: string
+  is_demo: boolean
+  matched_skills: string[]
+  applicants: number
+  new_applicants: number
+}
+
+export type HomeApplication = {
+  id: string
+  opportunity_id: string
+  title: string
+  org_name?: string | null
+  status: string
+  created_at: string
+  person?: MemberMini | null
+}
+
+// The home page for one role, from GET /home.
+export type Home = {
+  role: HomeRole
+  roles: HomeRole[]
+  org_name?: string | null
+  stats: { label: string; value: number }[]
+  openings: HomeOpening[]
+  applications: HomeApplication[]
+  people: { person: MemberMini; note?: string | null }[]
+  people_title?: string | null
+}
