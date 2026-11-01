@@ -60,6 +60,8 @@ export type ProfileView = {
   full_name: string
   headline?: string | null
   avatar_url?: string | null
+  cover?: string | null
+  pronouns?: string | null
   member_type: string
   location?: string | null
   industry?: string | null
@@ -107,6 +109,8 @@ export type Profile = {
   location?: string | null
   industry?: string | null
   avatar_url?: string | null
+  cover?: string | null
+  pronouns?: string | null
   member_type: string
   skills: string[]
   interests: string[]

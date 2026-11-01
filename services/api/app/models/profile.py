@@ -27,6 +27,10 @@ class Profile(Base):
     location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     industry: Mapped[str | None] = mapped_column(String(120), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # A gallery design ("g:<name>") or an uploaded image ("/uploads/covers/...").
+    # Empty means the default design for the member type.
+    cover: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pronouns: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     # member | student | academia | industry | mentor
     member_type: Mapped[str] = mapped_column(String(20), default="member")

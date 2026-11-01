@@ -58,7 +58,14 @@ async def get_my_profile(current: CurrentUser, db: DbSession):
 @router.patch("/me", response_model=ProfileOut)
 async def update_my_profile(payload: ProfileUpdate, current: CurrentUser, db: DbSession):
     profile = await _my_profile(db, current.id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if changes.get("cover") and changes["cover"][2:] not in COVER_GALLERY:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown cover design")
+    if "cover" in changes:
+        await _drop_uploaded_cover(profile.cover)
+    if "pronouns" in changes:
+        changes["pronouns"] = (changes["pronouns"] or "").strip() or None
+    for field, value in changes.items():
         setattr(profile, field, value)
     await db.commit()
     return await _my_profile(db, current.id)
@@ -176,6 +183,49 @@ async def upload_avatar(current: CurrentUser, db: DbSession, file: UploadFile = 
     await db.commit()
     if old and old.startswith("/uploads/avatars/"):
         await storage.delete(old)
+    return await _my_profile(db, current.id)
+
+
+# --- Cover image ---
+# Gallery designs live in the portal; the API only checks the name is one of them.
+COVER_GALLERY = {
+    "dawn", "harbor", "meadow", "campus", "circuit", "contour", "aurora", "slate",
+    "sunrise", "lagoon", "orchard", "skyline", "mosaic", "ripple", "forest", "graphite",
+}
+
+
+async def _drop_uploaded_cover(old: str | None) -> None:
+    if old and old.startswith("/uploads/covers/"):
+        await storage.delete(old)
+
+
+@router.post("/me/cover", response_model=ProfileOut)
+async def upload_cover(current: CurrentUser, db: DbSession, file: UploadFile = File(...)):
+    """A custom cover image. Verified students, faculty and recruiters only;
+    everyone else picks from the gallery. Keeps the network looking
+    professional and makes abuse rare."""
+    if not await aff.has_verified(db, current.id, ("student", "faculty", "recruiter")):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Custom covers are for verified members. Pick one from the gallery, or verify a role first.",
+        )
+    data = await file.read()
+    ext = image_ext(data)
+    profile = await _my_profile(db, current.id)
+    old = profile.cover
+    profile.cover = await storage.save(data, ext, "covers")
+    await db.commit()
+    await _drop_uploaded_cover(old)
+    return await _my_profile(db, current.id)
+
+
+@router.delete("/me/cover", response_model=ProfileOut)
+async def reset_cover(current: CurrentUser, db: DbSession):
+    profile = await _my_profile(db, current.id)
+    old = profile.cover
+    profile.cover = None
+    await db.commit()
+    await _drop_uploaded_cover(old)
     return await _my_profile(db, current.id)
 
 

@@ -54,6 +54,9 @@ class ProfileUpdate(BaseModel):
     interests: list[str] | None = Field(default=None, max_length=50)
     open_to_work: bool | None = None
     open_to_mentor: bool | None = None
+    pronouns: str | None = Field(default=None, max_length=30)
+    # Gallery designs only; uploaded covers go through /profiles/me/cover.
+    cover: str | None = Field(default=None, pattern=r"^g:[a-z0-9-]{1,30}$")
 
 
 class ProfileOut(BaseModel):
@@ -66,6 +69,8 @@ class ProfileOut(BaseModel):
     location: str | None = None
     industry: str | None = None
     avatar_url: str | None = None
+    cover: str | None = None
+    pronouns: str | None = None
     member_type: str
     skills: list[str] = []
     interests: list[str] = []
@@ -143,6 +148,8 @@ class ProfileViewOut(BaseModel):
     full_name: str
     headline: str | None = None
     avatar_url: str | None = None
+    cover: str | None = None
+    pronouns: str | None = None
     member_type: str
     location: str | None = None
     industry: str | None = None

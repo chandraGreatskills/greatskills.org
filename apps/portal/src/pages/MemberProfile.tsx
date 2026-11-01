@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { FiArrowRight, FiCheckCircle, FiEdit2, FiEye, FiMapPin } from 'react-icons/fi'
+import { FiArrowRight, FiCamera, FiCheckCircle, FiChevronDown, FiEdit2, FiEye, FiMapPin, FiPlus, FiTrendingUp } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { completion } from '../lib/completion'
 import { memberLabel } from '../lib/format'
 import { ROLE_LABEL } from '../lib/roles'
 import type { Education, Experience, ProfileView } from '../lib/types'
@@ -10,6 +11,10 @@ import Avatar from '../components/Avatar'
 import ConnectButton from '../components/ConnectButton'
 import DemoBadge from '../components/DemoBadge'
 import MutualList from '../components/MutualList'
+import CoverPicker from '../components/CoverPicker'
+import ImageCropper from '../components/ImageCropper'
+import { readImage } from '../lib/images'
+import { coverStyle } from '../lib/covers'
 import { RecommendationsSection } from '../components/Recommendations'
 
 const PREVIEWS = [
@@ -18,12 +23,6 @@ const PREVIEWS = [
   { value: 'connection', label: 'Connection' },
 ] as const
 
-const COVER: Record<string, string> = {
-  student: 'from-[#c9d9ec] via-[#d3e2d6] to-[#dbe8c8]',
-  academia: 'from-[#cfd2ea] via-[#cbd8eb] to-[#d3e2d6]',
-  industry: 'from-[#c6dfd9] via-[#d0e4d3] to-[#dbe8c8]',
-  mentor: 'from-[#eadcbf] via-[#e1e2c9] to-[#d3e2d6]',
-}
 
 const YEAR = new Date().getFullYear()
 
@@ -82,15 +81,25 @@ export default function MemberProfile() {
   const own = me?.profile?.handle === handle
   const as = params.get('as')
 
+  const [reload, setReload] = useState(0)
+  const [editCover, setEditCover] = useState(false)
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null)
+  const photoInput = useRef<HTMLInputElement>(null)
+  const { refreshMe } = useAuth()
+
   useEffect(() => {
-    setView(null)
+    if (!reload) setView(null)
     setError('')
     const q = own && as ? `?as=${as}` : ''
     api
       .get<ProfileView>(`/profiles/${handle}${q}`)
       .then(setView)
       .catch((err) => setError(err instanceof ApiError && err.status === 404 ? 'This profile is not available.' : 'Could not load this profile.'))
-  }, [handle, as, own])
+  }, [handle, as, own, reload])
+  const changed = () => {
+    setReload((n) => n + 1)
+    refreshMe()
+  }
 
   if (error) return <p className="text-sm text-ink">{error}</p>
   if (!view) return <p className="text-navy/50">Loading profile…</p>
@@ -129,17 +138,52 @@ export default function MemberProfile() {
 
       {/* Header */}
       <div className="overflow-hidden rounded-xl border border-navy/10 bg-white">
-        <div className={`h-32 bg-gradient-to-r sm:h-40 ${COVER[view.member_type] ?? COVER.student}`} />
+        <div className="relative h-32 sm:h-44" style={coverStyle(view.cover, view.member_type)}>
+          {own && (
+            <button
+              onClick={() => setEditCover(true)}
+              title="Change cover"
+              aria-label="Change cover"
+              className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-navy shadow hover:bg-white"
+            >
+              <FiEdit2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         <div className="px-6 pb-6">
           <div className="-mt-16 flex items-end justify-between">
-            <div className="rounded-full ring-4 ring-white">
+            <div className="relative rounded-full ring-4 ring-white">
               <Avatar name={view.full_name} url={view.avatar_url} size="lg" />
+              {own && (
+                <>
+                  <button
+                    onClick={() => photoInput.current?.click()}
+                    title="Change photo"
+                    aria-label="Change photo"
+                    className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full bg-green-deep text-white shadow ring-2 ring-white hover:bg-green"
+                  >
+                    <FiCamera className="h-4 w-4" />
+                  </button>
+                  <input
+                    ref={photoInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      e.target.value = ''
+                      if (f) setPhotoSrc(await readImage(f))
+                    }}
+                  />
+                </>
+              )}
             </div>
           </div>
           <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto]">
             <div className="min-w-0">
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-navy">
                 {view.full_name}
+                {view.pronouns && <span className="text-base font-normal text-ink">{view.pronouns}</span>}
                 {roles.length > 0 && (
                   <span title={roles.map((r) => `Verified ${ROLE_LABEL[r.kind].toLowerCase()} · ${r.org_name}`).join('\n')} className="text-green-deep">
                     <FiCheckCircle className="h-5 w-5" />
@@ -203,9 +247,7 @@ export default function MemberProfile() {
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {own ? (
-              <Link to="/profile" className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-1.5 text-sm font-semibold text-white hover:bg-navy-900">
-                <FiEdit2 className="h-4 w-4" /> Edit profile
-              </Link>
+              <OwnActions view={view} onChanged={changed} />
             ) : (
               <ConnectButton className="w-44" pill member={{ ...view, user_id: view.user_id }} />
             )}
@@ -287,6 +329,19 @@ export default function MemberProfile() {
       )}
 
       {showMutual && <MutualList m={view} onClose={() => setShowMutual(false)} />}
+      {editCover && <CoverPicker current={view.cover} onClose={() => setEditCover(false)} onChanged={changed} />}
+      {photoSrc && (
+        <ImageCropper
+          src={photoSrc}
+          shape="photo"
+          onCancel={() => setPhotoSrc(null)}
+          onSave={async (file) => {
+            await api.upload('/profiles/me/avatar', file)
+            setPhotoSrc(null)
+            changed()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -337,4 +392,56 @@ function Section<T>({
 
 function Hint() {
   return <p className="mt-2 text-xs text-ink">Sign in to see the full profile.</p>
+}
+
+// The owner's buttons under their own header: what they're open to, adding a
+// section, and how complete the profile is.
+function OwnActions({ view, onChanged }: { view: ProfileView; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
+  const toggle = async (field: 'open_to_work' | 'open_to_mentor', value: boolean) => {
+    await api.patch('/profiles/me', { [field]: value })
+    onChanged()
+  }
+  // Same measure as the home page, so the number matches everywhere.
+  const { me } = useAuth()
+  const pct = completion(me?.profile).percent
+  const PILL = 'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold'
+  return (
+    <>
+      <div className="relative">
+        <button onClick={() => setOpen(!open)} onBlur={() => setTimeout(() => setOpen(false), 150)} className={`${PILL} bg-navy text-white hover:bg-navy-900`}>
+          Open to <FiChevronDown className="h-4 w-4" />
+        </button>
+        {open && (
+          <div className="absolute left-0 top-10 z-20 w-64 rounded-xl border border-navy/10 bg-white p-2 shadow-lg">
+            {([
+              ['open_to_work', 'Finding a new job or internship', 'Shown to verified recruiters only', !!view.open_to_work],
+              ['open_to_mentor', 'Mentoring others', 'Shown to members', view.open_to_mentor],
+            ] as const).map(([field, label, hint, on]) => (
+              <button
+                key={field}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => toggle(field, !on)}
+                className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left hover:bg-navy-50"
+              >
+                <span className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${on ? 'border-green-deep bg-green-deep text-white' : 'border-navy/30'}`}>
+                  {on && '✓'}
+                </span>
+                <span>
+                  <span className="block text-sm font-medium text-navy">{label}</span>
+                  <span className="block text-xs text-ink">{hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <Link to="/profile" className={`${PILL} border border-navy/60 text-navy hover:bg-navy-50`}>
+        <FiPlus className="h-4 w-4" /> Add section
+      </Link>
+      <Link to="/profile" className={`${PILL} border border-green-deep/60 text-green-deep hover:bg-green/10`} title="Complete your profile">
+        <FiTrendingUp className="h-4 w-4" /> Profile {pct}% complete
+      </Link>
+    </>
+  )
 }

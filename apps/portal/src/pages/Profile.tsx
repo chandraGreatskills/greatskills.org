@@ -5,6 +5,8 @@ import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
 import MyRecommendationsCard from '../components/MyRecommendationsCard'
+import ImageCropper from '../components/ImageCropper'
+import { readImage } from '../lib/images'
 import SecurityCard from '../components/SecurityCard'
 import RolesCard from '../components/RolesCard'
 
@@ -13,6 +15,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<ProfileT | null>(null)
   const [saved, setSaved] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null)
   const resumeInput = useRef<HTMLInputElement>(null)
 
   const load = () => api.get<ProfileT>('/profiles/me').then(setProfile)
@@ -29,6 +32,7 @@ export default function Profile() {
     const updated = await api.patch<ProfileT>('/profiles/me', {
       full_name: profile.full_name,
       headline: profile.headline,
+      pronouns: profile.pronouns ?? '',
       bio: profile.bio,
       location: profile.location,
       industry: profile.industry,
@@ -97,9 +101,13 @@ export default function Profile() {
             <input
               ref={avatarInput}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               hidden
-              onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (f) setPhotoSrc(await readImage(f))
+              }}
             />
           </div>
           <h2 className="mt-4 font-serif text-xl font-semibold text-navy">
@@ -173,6 +181,17 @@ export default function Profile() {
         </div>
 
         <SecurityCard />
+        {photoSrc && (
+          <ImageCropper
+            src={photoSrc}
+            shape="photo"
+            onCancel={() => setPhotoSrc(null)}
+            onSave={async (file) => {
+              await uploadAvatar(file)
+              setPhotoSrc(null)
+            }}
+          />
+        )}
       </aside>
 
       {/* Right: editable details */}
@@ -193,6 +212,7 @@ export default function Profile() {
           <Grid>
             <Text label="Full name" value={profile.full_name} onChange={(v) => update({ full_name: v })} />
             <Text label="Headline" value={profile.headline ?? ''} onChange={(v) => update({ headline: v })} />
+            <Text label="Pronouns (optional)" value={profile.pronouns ?? ''} onChange={(v) => update({ pronouns: v.slice(0, 30) })} />
             <Text label="Location" value={profile.location ?? ''} onChange={(v) => update({ location: v })} />
             <Text label="Industry" value={profile.industry ?? ''} onChange={(v) => update({ industry: v })} />
           </Grid>
