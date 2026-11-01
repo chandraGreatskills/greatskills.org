@@ -80,6 +80,8 @@ export type ProfileView = {
   connection_count?: number | null
   mutual_connections: number
   mutual_sample: MemberMini[]
+  recommendations_received: Recommendation[]
+  recommendations_given: Recommendation[]
 }
 
 // One person in the member's own network, with the link between them.
@@ -232,4 +234,18 @@ export type MemberMini = {
   full_name: string
   avatar_url?: string | null
   headline?: string | null
+}
+
+export type RelationshipKind = 'taught' | 'managed' | 'worked_with' | 'mentored' | 'studied_with' | 'reported_to'
+
+// A recommendation with the other person: the author on received ones, the
+// recipient on given ones.
+export type Recommendation = {
+  id: string
+  relationship_kind: RelationshipKind
+  body: string
+  status: 'pending' | 'shown' | 'hidden'
+  created_at: string
+  updated_at: string
+  person: MemberMini
 }

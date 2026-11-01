@@ -4,6 +4,7 @@ import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck, FiEye } from 'react-ic
 import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
+import MyRecommendationsCard from '../components/MyRecommendationsCard'
 import SecurityCard from '../components/SecurityCard'
 import RolesCard from '../components/RolesCard'
 
@@ -210,6 +211,7 @@ export default function Profile() {
 
         <RolesCard />
         <EducationEditor profile={profile} reload={() => { load(); refreshMe() }} />
+        <MyRecommendationsCard />
         <ExperienceEditor profile={profile} reload={() => { load(); refreshMe() }} />
       </section>
     </div>

@@ -22,6 +22,7 @@ from app.schemas.profile import (
 from app.models.user import User
 from app.services import affiliations as aff
 from app.services import demo, network
+from app.services.recommendations import listed
 from app.services.storage import storage
 from app.services.uploads import DOC_TYPES, document_ext, image_ext
 from app.services.visibility import build_view, relation_to
@@ -113,6 +114,12 @@ async def view_profile(
             view.mutual_connections = len(shared)
             view.mutual_sample = [minis[u] for u in shared[:3] if u in minis]
             view.degree = "1st" if view.connection == "connected" else "2nd" if shared else "3rd+"
+        view.recommendations_received = [
+            r.model_dump() for r in await listed(db, profile.user_id, "received", ("shown",))
+        ]
+        view.recommendations_given = [
+            r.model_dump() for r in await listed(db, profile.user_id, "given", ("shown",))
+        ]
     return view
 
 

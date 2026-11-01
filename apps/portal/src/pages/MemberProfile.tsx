@@ -10,6 +10,7 @@ import Avatar from '../components/Avatar'
 import ConnectButton from '../components/ConnectButton'
 import DemoBadge from '../components/DemoBadge'
 import MutualList from '../components/MutualList'
+import { RecommendationsSection } from '../components/Recommendations'
 
 const PREVIEWS = [
   { value: 'public', label: 'Logged-out visitor' },
@@ -260,6 +261,17 @@ export default function MemberProfile() {
         )}>
           {view.skills_truncated && <Hint />}
         </Section>
+      )}
+
+      {view.viewer !== 'public' && (
+        <RecommendationsSection
+          name={view.full_name}
+          received={view.recommendations_received ?? []}
+          given={view.recommendations_given ?? []}
+          canWrite={!own && view.connection === 'connected'}
+          recipientId={view.user_id}
+          onWritten={() => {}}
+        />
       )}
 
       {view.interests.length > 0 && (

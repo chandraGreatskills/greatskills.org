@@ -10,6 +10,7 @@ from app.api.routes import (
     newsletter,
     opportunities,
     profiles,
+    recommendations,
     sim,
 )
 from app.core.config import settings
@@ -17,6 +18,7 @@ from app.core.config import settings
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(profiles.router)
+api_router.include_router(recommendations.router)
 api_router.include_router(members.router)
 api_router.include_router(connections.router)
 api_router.include_router(opportunities.router)

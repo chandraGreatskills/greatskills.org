@@ -169,6 +169,10 @@ class ProfileViewOut(BaseModel):
     connection_count: int | None = None
     mutual_connections: int = 0
     mutual_sample: list[MemberMini] = []
+    # Accepted recommendations, for signed-in viewers only. Typed loosely
+    # here to avoid a circular import; the route fills RecommendationOut.
+    recommendations_received: list[dict] = []
+    recommendations_given: list[dict] = []
 
     @model_serializer(mode="wrap")
     def _omit_hidden(self, handler):
