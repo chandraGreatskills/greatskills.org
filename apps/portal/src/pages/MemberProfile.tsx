@@ -298,9 +298,8 @@ export default function MemberProfile() {
       )}
 
       {view.skills.length > 0 && (
-        <Section title={`Skills (${view.skills.length})`} items={view.skills} limit={5} render={(s: string) => (
-          <p className="font-semibold text-navy">{s}</p>
-        )}>
+        <Section title={`Skills (${view.skills.length})`}>
+          <SkillChips skills={view.skills} />
           {view.skills_truncated && <Hint />}
         </Section>
       )}
@@ -443,5 +442,30 @@ function OwnActions({ view, onChanged }: { view: ProfileView; onChanged: () => v
         <FiTrendingUp className="h-4 w-4" /> Profile {pct}% complete
       </Link>
     </>
+  )
+}
+
+// Skills as one wrapping row of chips. Long lists show the first dozen with a
+// "+N more" chip that opens the rest.
+function SkillChips({ skills }: { skills: string[] }) {
+  const [all, setAll] = useState(false)
+  const LIMIT = 12
+  const shown = all ? skills : skills.slice(0, LIMIT)
+  return (
+    <div className="flex flex-wrap gap-2">
+      {shown.map((s) => (
+        <span key={s} className="rounded-full border border-navy/15 bg-navy-50/60 px-3 py-1 text-sm font-medium text-navy">
+          {s}
+        </span>
+      ))}
+      {skills.length > LIMIT && (
+        <button
+          onClick={() => setAll(!all)}
+          className="rounded-full border border-dashed border-navy/30 px-3 py-1 text-sm font-semibold text-ink hover:text-navy"
+        >
+          {all ? 'Show less' : `+${skills.length - LIMIT} more`}
+        </button>
+      )}
+    </div>
   )
 }
