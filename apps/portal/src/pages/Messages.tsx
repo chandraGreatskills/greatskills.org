@@ -60,33 +60,35 @@ export default function Messages() {
   }, [box])
 
   return (
-    <div className="grid h-[calc(100vh-9rem)] min-h-[520px] overflow-hidden rounded-xl border border-navy/10 bg-white md:grid-cols-[340px_1fr]">
-      <aside className={`flex min-h-0 flex-col border-r border-navy/10 ${id ? 'hidden md:flex' : 'flex'}`}>
-        <div className="border-b border-navy/5 p-3">
-          <h1 className="mb-2 px-1 text-lg font-semibold text-navy">Messages</h1>
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy/40" />
-            <input
-              className="field h-9 rounded-lg py-1 pl-9 text-sm"
-              placeholder="Search names and messages"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && load()}
-            />
-          </div>
-          <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
-            {BOXES.map((b) => (
-              <button
-                key={b.value}
-                onClick={() => setBox(b.value)}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${box === b.value ? 'bg-navy text-white' : 'border border-navy/15 text-navy/70 hover:bg-navy-50'}`}
-              >
-                {b.label}
-                {b.value === 'requests' && requests > 0 && <span className="ml-1 rounded-full bg-green-deep px-1.5 text-white">{requests}</span>}
-              </button>
-            ))}
-          </div>
+    <div className="flex h-[calc(100vh-9rem)] min-h-[520px] flex-col overflow-hidden rounded-xl border border-navy/10 bg-white">
+      {/* One bar across the top: title, search and filters, so the inbox column stays uncluttered. */}
+      <div className={`flex-wrap items-center gap-3 border-b border-navy/10 px-4 py-3 ${id ? 'hidden md:flex' : 'flex'}`}>
+        <h1 className="text-lg font-semibold text-navy">Messages</h1>
+        <div className="relative min-w-[200px] flex-1 md:max-w-xs">
+          <FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy/40" />
+          <input
+            className="field h-9 rounded-lg py-1 pl-9 text-sm"
+            placeholder="Search names and messages"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && load()}
+          />
         </div>
+        <div className="flex flex-wrap gap-1.5">
+          {BOXES.map((b) => (
+            <button
+              key={b.value}
+              onClick={() => setBox(b.value)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${box === b.value ? 'bg-navy text-white' : 'border border-navy/15 text-navy/70 hover:bg-navy-50'}`}
+            >
+              {b.label}
+              {b.value === 'requests' && requests > 0 && <span className="ml-1 rounded-full bg-green-deep px-1.5 text-white">{requests}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid min-h-0 flex-1 md:grid-cols-[340px_1fr]">
+      <aside className={`flex min-h-0 flex-col border-r border-navy/10 ${id ? 'hidden md:flex' : 'flex'}`}>
         <ul className="min-h-0 flex-1 divide-y divide-navy/5 overflow-y-auto">
           {list?.map((c) => (
             <li key={c.id}>
@@ -128,6 +130,7 @@ export default function Messages() {
           <div className="grid flex-1 place-items-center p-8 text-center text-sm text-ink">Pick a conversation, or start one from a member's profile.</div>
         )}
       </section>
+      </div>
     </div>
   )
 }
