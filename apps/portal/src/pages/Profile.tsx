@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck, FiEye } from 'react-icons/fi'
+import { FiUpload, FiFileText, FiPlus, FiTrash2, FiCheck, FiEye, FiUser } from 'react-icons/fi'
 import { api, fileUrl, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Profile as ProfileT } from '../lib/types'
@@ -115,12 +115,14 @@ export default function Profile() {
           </h2>
           <p className="text-sm text-ink">{profile.headline || 'Add a headline'}</p>
           <span className="mt-2 block text-xs text-ink">/in/{profile.handle}</span>
-          <Link
-            to={`/in/${profile.handle}?as=member`}
-            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-green-deep hover:underline"
-          >
-            <FiEye className="h-4 w-4" /> See how others view it
-          </Link>
+          <div className="mt-2 flex flex-col items-center gap-1 text-sm font-medium text-green-deep">
+            <Link to={`/in/${profile.handle}`} className="inline-flex items-center gap-1 hover:underline">
+              <FiUser className="h-4 w-4" /> View profile
+            </Link>
+            <Link to={`/in/${profile.handle}?as=member`} className="inline-flex items-center gap-1 hover:underline">
+              <FiEye className="h-4 w-4" /> See how others view it
+            </Link>
+          </div>
           <div className="mt-4 flex flex-col gap-2">
             <Toggle
               label="Open to work"

@@ -70,8 +70,8 @@ function More({ text, lines = 3 }: { text: string; lines?: 2 | 3 | 4 }) {
 }
 
 // Another member's profile, exactly as the API trimmed it for this viewer.
-// An owner opening their own link gets a "viewing as" switcher instead of a
-// Connect button.
+// An owner gets their own buttons instead of a Connect button, and a "viewing
+// as" switcher once they ask to preview (?as=).
 export default function MemberProfile() {
   const { handle } = useParams()
   const [params, setParams] = useSearchParams()
@@ -116,7 +116,7 @@ export default function MemberProfile() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      {own && (
+      {own && as && (
         <div className="flex flex-col gap-3 rounded-xl border border-navy/10 bg-white p-4 sm:flex-row sm:items-center">
           <p className="flex items-center gap-2 text-sm font-medium text-navy">
             <FiEye className="h-4 w-4 text-green-deep" /> Viewing your profile as
@@ -134,6 +134,9 @@ export default function MemberProfile() {
               </button>
             ))}
           </div>
+          <button onClick={() => setParams({})} className="text-left text-sm font-medium text-green-deep hover:underline sm:ml-auto">
+            Done
+          </button>
         </div>
       )}
 
@@ -404,8 +407,8 @@ function Hint() {
   return <p className="mt-2 text-xs text-ink">Sign in to see the full profile.</p>
 }
 
-// The owner's buttons under their own header: what they're open to, adding a
-// section, and how complete the profile is.
+// The owner's buttons under their own header: what they're open to, editing,
+// adding a section, and how complete the profile is.
 function OwnActions({ view, onChanged }: { view: ProfileView; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
   const toggle = async (field: 'open_to_work' | 'open_to_mentor', value: boolean) => {
@@ -446,6 +449,9 @@ function OwnActions({ view, onChanged }: { view: ProfileView; onChanged: () => v
           </div>
         )}
       </div>
+      <Link to="/profile" className={`${PILL} border border-navy/60 text-navy hover:bg-navy-50`}>
+        <FiEdit2 className="h-4 w-4" /> Edit profile
+      </Link>
       <Link to="/profile" className={`${PILL} border border-navy/60 text-navy hover:bg-navy-50`}>
         <FiPlus className="h-4 w-4" /> Add section
       </Link>
