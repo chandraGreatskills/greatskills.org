@@ -8,6 +8,8 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import VerifyRole from './pages/VerifyRole'
 import Admin from './pages/Admin'
+import OrgPage from './pages/OrgPage'
+import Organizations from './pages/Organizations'
 import Feed from './pages/Feed'
 import Members from './pages/Members'
 import Opportunities from './pages/Opportunities'
@@ -34,6 +36,8 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/in/:handle" element={<MemberProfile />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/org/:slug" element={<OrgPage />} />
+            <Route path="/organizations" element={<Organizations />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -22,6 +22,8 @@ class Organization(Base):
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # One line under the name on the organization's page.
+    tagline: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # pending | approved | rejected. A member's first school or work email from
     # an unknown domain creates the organization as pending; nobody gets a
     # verified badge from it until an admin approves it.
@@ -32,6 +34,16 @@ class Organization(Base):
     # Demo organization from the simulation engine; same rules as User.
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     sim_tag: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+
+class OrgFollow(Base):
+    """A member following an organization, to see its openings and updates."""
+
+    __tablename__ = "org_follows"
+    __table_args__ = (UniqueConstraint("user_id", "org_id", name="uq_org_follow"),)
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    org_id: Mapped[UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
 
 
 class OrgDomain(Base):

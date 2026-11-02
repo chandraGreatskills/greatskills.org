@@ -292,3 +292,26 @@ export type Home = {
   people: { person: MemberMini; note?: string | null }[]
   people_title?: string | null
 }
+
+export type OrgCard = {
+  id: string
+  name: string
+  slug: string
+  org_type: string
+  tagline?: string | null
+  location?: string | null
+  logo_url?: string | null
+  followers: number
+  following: boolean
+  is_demo: boolean
+}
+
+export type OrgPage = OrgCard & {
+  description?: string | null
+  website?: string | null
+  can_edit: boolean
+  staff_count: number
+  student_count: number
+  openings: { id: string; title: string; kind: string; location?: string | null; remote: boolean; closes_at?: string | null; created_at: string }[]
+  people: { person: MemberMini; kind: 'student' | 'faculty' | 'recruiter' }[]
+}

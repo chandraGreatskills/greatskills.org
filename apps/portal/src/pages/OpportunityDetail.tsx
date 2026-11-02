@@ -73,7 +73,9 @@ export default function OpportunityDetail() {
             <DemoBadge show={o.is_demo} />
           </h1>
           <p className="mt-1 text-navy/80">
-            {o.org?.name ?? (o.poster && (
+            {o.org ? (
+              <Link to={`/org/${o.org.slug}`} className="font-medium text-green-deep hover:underline">{o.org.name}</Link>
+            ) : (o.poster && (
               <>Posted by <Link to={`/in/${o.poster.handle}`} className="font-medium text-green-deep hover:underline">{o.poster.full_name}</Link></>
             ))}
           </p>

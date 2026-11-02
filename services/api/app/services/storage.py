@@ -20,7 +20,7 @@ from uuid import uuid4
 
 from app.core.config import settings
 
-PUBLIC_FOLDERS = {"avatars", "covers"}
+PUBLIC_FOLDERS = {"avatars", "covers", "logos"}
 
 
 class Storage(ABC):

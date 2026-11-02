@@ -230,18 +230,21 @@ export default function MemberProfile() {
             </div>
             {(current || school) && (
               <div className="space-y-3 sm:w-64">
-                {current && (
-                  <div className="flex items-center gap-3">
-                    <OrgTile name={current.company} size="h-9 w-9 text-xs" />
-                    <span className="text-sm font-semibold leading-5 text-navy">{current.company}</span>
-                  </div>
-                )}
-                {school && (
-                  <div className="flex items-center gap-3">
-                    <OrgTile name={school.school} size="h-9 w-9 text-xs" />
-                    <span className="text-sm font-semibold leading-5 text-navy">{school.school}</span>
-                  </div>
-                )}
+                {[current?.company, school?.school].filter((n): n is string => !!n).map((name) => {
+                  // Link to the organization's page when a verified role there matches.
+                  const page = roles.find((r) => r.org_name.toLowerCase() === name.toLowerCase())
+                  const inner = (
+                    <>
+                      <OrgTile name={name} size="h-9 w-9 text-xs" />
+                      <span className={`text-sm font-semibold leading-5 text-navy ${page ? 'hover:underline' : ''}`}>{name}</span>
+                    </>
+                  )
+                  return page ? (
+                    <Link key={name} to={`/org/${page.org_slug}`} className="flex items-center gap-3">{inner}</Link>
+                  ) : (
+                    <div key={name} className="flex items-center gap-3">{inner}</div>
+                  )
+                })}
               </div>
             )}
           </div>

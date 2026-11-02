@@ -48,6 +48,10 @@ export default function Members() {
           {summary
             ? `${summary.connections} connection${summary.connections === 1 ? '' : 's'}`
             : 'Find members, mentors, industry, and academia to connect with.'}
+          {' · '}
+          <Link to="/organizations" className="font-semibold text-green-deep hover:underline">
+            Browse universities and companies
+          </Link>
         </p>
       </div>
 

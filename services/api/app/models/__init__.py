@@ -2,7 +2,7 @@ from app.models.connection import Connection
 from app.models.contact import ContactInquiry
 from app.models.newsletter import NewsletterSubscriber
 from app.models.opportunity import Application, Opportunity, SavedOpportunity
-from app.models.organization import Affiliation, Organization, OrgDomain
+from app.models.organization import Affiliation, Organization, OrgDomain, OrgFollow
 from app.models.profile import Education, Experience, Profile, Resume
 from app.models.recommendation import Recommendation
 from app.models.session import AuthSession, PasswordReset
@@ -19,6 +19,7 @@ __all__ = [
     "Connection",
     "Organization",
     "OrgDomain",
+    "OrgFollow",
     "Affiliation",
     "Opportunity",
     "Application",

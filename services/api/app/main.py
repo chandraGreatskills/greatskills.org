@@ -80,6 +80,9 @@ app.mount("/uploads/avatars", ImagesOnly(directory=_avatars), name="avatars")
 _covers = Path(settings.upload_dir) / "covers"
 _covers.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads/covers", ImagesOnly(directory=_covers), name="covers")
+_logos = Path(settings.upload_dir) / "logos"
+_logos.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads/logos", ImagesOnly(directory=_logos), name="logos")
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
