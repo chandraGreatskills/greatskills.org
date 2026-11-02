@@ -64,6 +64,10 @@ class Affiliation(Base):
     address. Only a verified affiliation shows a badge or unlocks posting for
     the organization.
 
+    A verified student who graduates becomes alumni without a new email: the
+    school address was already proved while they studied, and graduates often
+    lose it.
+
     Status moves: email_sent -> awaiting_org (address proved, organization
     still pending) -> verified. An admin can reject the organization (rejected)
     or withdraw a verification (revoked). A member removing their own role
@@ -77,8 +81,13 @@ class Affiliation(Base):
     org_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
-    # student | faculty | recruiter
+    # student | alumni | faculty | recruiter
     kind: Mapped[str] = mapped_column(String(20))
+    # How the address was proved, shown on the badge so readers know how
+    # strong it is. school_email: a link sent to the address was clicked.
+    # account_email: the address is the member's own sign-up email, already
+    # confirmed when they joined.
+    verified_by: Mapped[str] = mapped_column(String(20), default="school_email", server_default="school_email")
     # Kept so the member and admins can see which address proved it. Never
     # shown to anyone else.
     email: Mapped[str] = mapped_column(String(320), index=True)

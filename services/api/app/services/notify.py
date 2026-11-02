@@ -35,4 +35,4 @@ async def handle_of(db: AsyncSession, user_id: UUID) -> str:
 
 
 # How a verified role reads in a sentence: "verified as a student at ...".
-ROLE_WORD = {"student": "a student", "faculty": "faculty", "recruiter": "hiring"}
+ROLE_WORD = {"student": "a student", "alumni": "alumni", "faculty": "faculty", "recruiter": "hiring"}

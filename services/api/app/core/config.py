@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # enough on its own (faster, but easier for a fake employer).
     org_auto_approve: bool = False
     verify_token_ttl_hours: int = 48
+    # Refuse sign-ups and role emails at throwaway inbox domains
+    # (app/services/disposable.py).
+    block_disposable_email: bool = True
 
     # Outgoing email (SMTP over SSL). Empty host = not configured: production
     # logs and skips, development prints to the console.

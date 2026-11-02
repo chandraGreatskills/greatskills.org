@@ -247,6 +247,7 @@ async def send_password_changed_email(to: str, full_name: str | None = None) -> 
 def _role_phrase(kind: str, org_name: str) -> str:
     return {
         "student": f"they're a student at {org_name}",
+        "alumni": f"they graduated from {org_name}",
         "faculty": f"they teach or research at {org_name}",
         "recruiter": f"they hire for {org_name}",
     }.get(kind, f"they belong to {org_name}")
