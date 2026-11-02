@@ -179,7 +179,11 @@ export type Applicant = {
   member: ProfileCard
 }
 
-export type RoleKind = 'student' | 'faculty' | 'recruiter'
+export type RoleKind = 'student' | 'alumni' | 'faculty' | 'recruiter'
+
+// How a role was proved: a link to a school or work address, or the
+// member's own sign-up email.
+export type VerifiedBy = 'school_email' | 'account_email'
 
 // A checked role as other members see it: school or work email confirmed,
 // organization approved.
@@ -187,6 +191,7 @@ export type VerifiedRole = {
   kind: RoleKind
   org_name: string
   org_slug: string
+  verified_by: VerifiedBy
 }
 
 // The member's own view of a role they added.
@@ -199,8 +204,16 @@ export type Affiliation = {
   org_name: string
   org_slug: string
   org_status: string
+  verified_by: VerifiedBy
   verified_at?: string | null
   created_at: string
+}
+
+// Offered when the sign-up email is on an approved organization's domain.
+export type RoleSuggestion = {
+  org_name: string
+  org_type: string
+  kinds: RoleKind[]
 }
 
 export type OrgReview = {

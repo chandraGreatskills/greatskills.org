@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-Kind = Literal["student", "faculty", "recruiter"]
+Kind = Literal["student", "alumni", "faculty", "recruiter"]
+VerifiedBy = Literal["school_email", "account_email"]
 
 
 class VerifiedRoleOut(BaseModel):
@@ -13,6 +14,7 @@ class VerifiedRoleOut(BaseModel):
     kind: Kind
     org_name: str
     org_slug: str
+    verified_by: VerifiedBy = "school_email"
 
 
 class AffiliationIn(BaseModel):
@@ -21,6 +23,19 @@ class AffiliationIn(BaseModel):
     # Only used when the email domain isn't known yet, to name the new
     # organization for admin review.
     org_name: str | None = Field(default=None, min_length=2, max_length=200)
+
+
+class FromAccountIn(BaseModel):
+    kind: Kind
+
+
+class RoleSuggestionOut(BaseModel):
+    """Offered after sign-up when the account email is on an approved
+    organization's domain, so the member can add the role in one click."""
+
+    org_name: str
+    org_type: str
+    kinds: list[Kind]
 
 
 class ConfirmAffiliationIn(BaseModel):
@@ -38,6 +53,7 @@ class AffiliationOut(BaseModel):
     org_name: str
     org_slug: str = ""
     org_status: str
+    verified_by: VerifiedBy = "school_email"
     verified_at: datetime | None = None
     created_at: datetime
 

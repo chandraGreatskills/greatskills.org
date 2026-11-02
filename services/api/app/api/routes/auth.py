@@ -37,6 +37,9 @@ from app.schemas.auth import (
 )
 from app.schemas.user import MeOut
 from app.services import sessions
+from app.services.affiliations import email_domain
+from app.services.disposable import MESSAGE as DISPOSABLE_MESSAGE
+from app.services.disposable import is_disposable
 from app.services.email import (
     send_password_changed_email,
     send_password_reset_email,
@@ -100,6 +103,8 @@ async def register(payload: RegisterIn, request: Request, response: Response, db
     if await over_limit("register", client_ip(request), settings.register_rate_per_hour):
         raise _slow_down()
     email = payload.email.lower()
+    if settings.block_disposable_email and is_disposable(email_domain(email)):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, DISPOSABLE_MESSAGE)
     _weak(payload.password, email)
     existing = await db.scalar(select(User).where(User.email == email))
     if existing:

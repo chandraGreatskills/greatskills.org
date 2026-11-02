@@ -1,5 +1,6 @@
 """A member's verified roles: add one, confirm it from the emailed link,
-resend the link, or remove it."""
+resend the link, add one from the sign-up email, mark a student role as
+graduated, or remove it."""
 
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -13,9 +14,17 @@ from app.core.config import settings
 from app.core.security import new_secret, sha256
 from app.models.organization import Affiliation, Organization, OrgDomain
 from app.models.profile import Profile
-from app.schemas.affiliation import AffiliationIn, AffiliationOut, ConfirmAffiliationIn
+from app.schemas.affiliation import (
+    AffiliationIn,
+    AffiliationOut,
+    ConfirmAffiliationIn,
+    FromAccountIn,
+    RoleSuggestionOut,
+)
 from app.services.notify import ROLE_WORD, notify
 from app.services import affiliations as aff
+from app.services.disposable import MESSAGE as DISPOSABLE_MESSAGE
+from app.services.disposable import is_disposable
 from app.services.email import send_affiliation_email
 
 router = APIRouter(prefix="/affiliations", tags=["affiliations"])
@@ -35,7 +44,8 @@ def _aware(dt: datetime) -> datetime:
 def _out(row: Affiliation, org: Organization) -> AffiliationOut:
     return AffiliationOut(
         id=row.id, kind=row.kind, email=row.email, status=row.status, org_name=org.name, org_slug=org.slug,
-        org_status=org.status, verified_at=row.verified_at, created_at=row.created_at,
+        org_status=org.status, verified_by=row.verified_by, verified_at=row.verified_at,
+        created_at=row.created_at,
     )
 
 
@@ -83,6 +93,8 @@ async def add_affiliation(
             status.HTTP_400_BAD_REQUEST,
             "Use your school or work email. Personal addresses like Gmail can't show where you study or work.",
         )
+    if settings.block_disposable_email and is_disposable(domain):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, DISPOSABLE_MESSAGE)
 
     want_type = aff.ORG_TYPE_FOR[payload.kind]
     org = await aff.org_for_domain(db, domain)
@@ -112,6 +124,18 @@ async def add_affiliation(
         )
         if mine:
             raise HTTPException(status.HTTP_409_CONFLICT, "You've already added this role.")
+        other = {"student": "alumni", "alumni": "student"}.get(payload.kind)
+        if other and await db.scalar(
+            select(Affiliation.id).where(
+                Affiliation.user_id == current.id, Affiliation.org_id == org.id,
+                Affiliation.kind == other, Affiliation.status.in_(ACTIVE),
+            )
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "You already have a student role here. Mark it as graduated instead."
+                if other == "student" else "You're already verified as alumni here.",
+            )
     else:
         if not payload.org_name or not payload.org_name.strip():
             raise HTTPException(
@@ -148,6 +172,73 @@ async def add_affiliation(
     await db.commit()
     await db.refresh(row)
     background.add_task(send_affiliation_email, email, token, row.kind, org.name, await _name(db, current.id))
+    return _out(row, org)
+
+
+# Roles a sign-up address can prove on its own, by organization type.
+ACCOUNT_KINDS = {"academia": ["student", "alumni", "faculty"], "industry": ["recruiter"]}
+
+
+async def _account_offer(db, current) -> tuple[Organization | None, list[str]]:
+    """The approved organization behind the member's own sign-up email and the
+    roles they could still add there. Pending organizations are left to the
+    Add a role form, so a one-click button can't fill the review queue."""
+    domain = aff.email_domain(current.email)
+    if aff.is_free_mail(domain) or is_disposable(domain):
+        return None, []
+    org = await aff.org_for_domain(db, domain)
+    if org is None or org.status != "approved":
+        return None, []
+    taken = await db.scalar(
+        select(Affiliation.id).where(
+            Affiliation.email == current.email, Affiliation.user_id != current.id,
+            Affiliation.email_confirmed_at.is_not(None), Affiliation.status.in_(ACTIVE),
+        )
+    )
+    if taken:
+        return None, []
+    have = set(
+        await db.scalars(
+            select(Affiliation.kind).where(
+                Affiliation.user_id == current.id, Affiliation.org_id == org.id,
+                Affiliation.status.in_(ACTIVE),
+            )
+        )
+    )
+    # Student and alumni at the same school can't both stand.
+    if have & {"student", "alumni"}:
+        have |= {"student", "alumni"}
+    return org, [k for k in ACCOUNT_KINDS.get(org.org_type, []) if k not in have]
+
+
+@router.get("/suggestion", response_model=RoleSuggestionOut | None)
+async def role_suggestion(current: VerifiedUser, db: DbSession):
+    org, kinds = await _account_offer(db, current)
+    if org is None or not kinds:
+        return None
+    return RoleSuggestionOut(org_name=org.name, org_type=org.org_type, kinds=kinds)
+
+
+@router.post("/from-account", response_model=AffiliationOut, status_code=201)
+async def add_from_account(payload: FromAccountIn, current: VerifiedUser, db: DbSession):
+    """The sign-up email was confirmed when the member joined, so it proves
+    the role without a second link. Only for approved organizations."""
+    if await over_limit("affiliation-add", str(current.id), 5):
+        raise _slow_down()
+    org, kinds = await _account_offer(db, current)
+    if org is None or payload.kind not in kinds:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Your sign-up email can't confirm this role. Use Add a role with your school or work email.",
+        )
+    now = _now()
+    row = Affiliation(
+        user_id=current.id, org_id=org.id, kind=payload.kind, email=current.email,
+        status="verified", email_confirmed_at=now, verified_at=now, verified_by="account_email",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
     return _out(row, org)
 
 
@@ -203,6 +294,29 @@ async def resend_link(aff_id: UUID, current: VerifiedUser, background: Backgroun
     token = _new_link(row)
     await db.commit()
     background.add_task(send_affiliation_email, row.email, token, row.kind, org.name, await _name(db, current.id))
+
+
+@router.post("/{aff_id}/graduate", response_model=AffiliationOut)
+async def mark_graduated(aff_id: UUID, current: CurrentUser, db: DbSession):
+    """Turns a verified student role into alumni. No new email: the school
+    address was proved while they studied, and graduates often lose it."""
+    row = await db.get(Affiliation, aff_id)
+    if not row or row.user_id != current.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if row.kind != "student" or row.status != "verified":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only a verified student role can be marked as graduated.")
+    clash = await db.scalar(
+        select(Affiliation.id).where(
+            Affiliation.user_id == current.id, Affiliation.org_id == row.org_id,
+            Affiliation.kind == "alumni", Affiliation.status.in_(ACTIVE),
+        )
+    )
+    if clash:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You already have an alumni role here.")
+    row.kind = "alumni"
+    await db.commit()
+    await db.refresh(row)
+    return _out(row, await db.get(Organization, row.org_id))
 
 
 @router.delete("/{aff_id}", status_code=status.HTTP_204_NO_CONTENT)

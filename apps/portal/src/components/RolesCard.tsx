@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { FiCheckCircle, FiClock, FiMail, FiTrash2, FiXCircle } from 'react-icons/fi'
+import { FiAward, FiCheckCircle, FiClock, FiMail, FiTrash2, FiXCircle, FiZap } from 'react-icons/fi'
 import { ApiError, api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Affiliation, RoleKind } from '../lib/types'
+import type { Affiliation, RoleKind, RoleSuggestion } from '../lib/types'
 import { ROLE_LABEL } from '../lib/roles'
 
 const KIND_HELP: Record<RoleKind, string> = {
   student: 'Use your school or university email.',
+  alumni: 'Use a school email that still works, such as an alumni address.',
   faculty: 'Use your university email.',
   recruiter: 'Use your work email at the company you hire for.',
 }
@@ -28,6 +29,23 @@ function Status({ a }: { a: Affiliation }) {
   )
 }
 
+const SUGGEST_LABEL: Record<RoleKind, string> = {
+  student: "I'm a student",
+  alumni: 'I graduated',
+  faculty: 'I teach or research',
+  recruiter: 'I hire here',
+}
+
+// "Not now" is remembered per organization in this browser only.
+const dismissKey = (org: string) => `gs-role-offer-dismissed:${org}`
+function wasDismissed(org: string): boolean {
+  try {
+    return localStorage.getItem(dismissKey(org)) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function RolesCard() {
   const { me } = useAuth()
   const [rows, setRows] = useState<Affiliation[]>([])
@@ -36,11 +54,51 @@ export default function RolesCard() {
   const [email, setEmail] = useState('')
   const [orgName, setOrgName] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [offer, setOffer] = useState<RoleSuggestion | null>(null)
 
-  const load = () => api.get<Affiliation[]>('/affiliations/me').then(setRows).catch(() => {})
+  const load = () => {
+    api.get<Affiliation[]>('/affiliations/me').then(setRows).catch(() => {})
+    if (me?.is_verified) {
+      api
+        .get<RoleSuggestion | null>('/affiliations/suggestion')
+        .then((s) => setOffer(s && !wasDismissed(s.org_name) ? s : null))
+        .catch(() => setOffer(null))
+    }
+  }
   useEffect(() => {
     load()
-  }, [])
+  }, [me?.is_verified])
+
+  const accept = async (k: RoleKind) => {
+    try {
+      const row = await api.post<Affiliation>('/affiliations/from-account', { kind: k })
+      setMsg({ ok: true, text: `Done. You're verified as ${ROLE_LABEL[row.kind].toLowerCase()} at ${row.org_name}.` })
+      load()
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Could not add this role' })
+    }
+  }
+
+  const dismiss = () => {
+    if (!offer) return
+    try {
+      localStorage.setItem(dismissKey(offer.org_name), '1')
+    } catch {
+      // Private mode: the offer just comes back next visit.
+    }
+    setOffer(null)
+  }
+
+  const graduate = async (a: Affiliation) => {
+    if (!window.confirm(`Mark yourself as graduated from ${a.org_name}? Your badge changes to Alumni and stays verified.`)) return
+    try {
+      await api.post(`/affiliations/${a.id}/graduate`)
+      setMsg({ ok: true, text: `Congratulations! You're now verified alumni of ${a.org_name}.` })
+      load()
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Could not update this role' })
+    }
+  }
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
@@ -96,6 +154,26 @@ export default function RolesCard() {
         </p>
       )}
 
+      {offer && (
+        <div className="mt-4 rounded-xl border border-green/30 bg-green/5 p-4">
+          <p className="flex items-center gap-2 text-sm font-medium text-navy">
+            <FiZap className="h-4 w-4 text-green-deep" />
+            You signed up with your {offer.org_type === 'industry' ? 'work' : 'school'} email at {offer.org_name}.
+          </p>
+          <p className="mt-1 text-sm text-ink">Add a verified role now. No second email needed.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {offer.kinds.map((k) => (
+              <button key={k} onClick={() => accept(k)} className="btn-green text-sm">
+                {SUGGEST_LABEL[k]}
+              </button>
+            ))}
+            <button onClick={dismiss} className="btn-ghost text-sm">
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       {msg && (
         <p className={`mt-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-green/10 text-green-deep' : 'bg-red-50 text-red-600'}`}>
           {msg.text}
@@ -108,6 +186,7 @@ export default function RolesCard() {
             <label className="label">I am</label>
             <select className="field" value={kind} onChange={(e) => setKind(e.target.value as RoleKind)}>
               <option value="student">A student</option>
+              <option value="alumni">A graduate (alumni)</option>
               <option value="faculty">Faculty (professor, lecturer, researcher)</option>
               <option value="recruiter">Hiring (employer, HR, recruiter)</option>
             </select>
@@ -158,6 +237,12 @@ export default function RolesCard() {
                 </div>
               </div>
               <div className="flex gap-1">
+                {a.kind === 'student' && a.status === 'verified' && (
+                  <button onClick={() => graduate(a)} className="btn-ghost inline-flex items-center gap-1 text-sm">
+                    <FiAward className="h-4 w-4" />
+                    I've graduated
+                  </button>
+                )}
                 {a.status === 'email_sent' && (
                   <button onClick={() => resend(a)} className="btn-ghost text-sm">
                     Resend link

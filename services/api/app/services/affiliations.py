@@ -18,11 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.organization import Affiliation, Organization, OrgDomain
 
-KINDS = ("student", "faculty", "recruiter")
+KINDS = ("student", "alumni", "faculty", "recruiter")
 
 # Which kind of organization each role belongs to. A student or professor
 # claim on a company's domain (or the reverse) is refused.
-ORG_TYPE_FOR = {"student": "academia", "faculty": "academia", "recruiter": "industry"}
+ORG_TYPE_FOR = {"student": "academia", "alumni": "academia", "faculty": "academia", "recruiter": "industry"}
 
 # Anyone can open an account at these, so an address here proves nothing
 # about where someone studies or works.
@@ -76,13 +76,13 @@ async def unique_slug(db: AsyncSession, name: str) -> str:
 
 
 async def verified_roles(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID, list[dict]]:
-    """Badges for many members in one query: {user_id: [{kind, org_name, org_slug}]}."""
+    """Badges for many members in one query: {user_id: [{kind, org_name, org_slug, verified_by}]}."""
     out: dict[UUID, list[dict]] = defaultdict(list)
     if not user_ids:
         return out
     rows = (
         await db.execute(
-            select(Affiliation.user_id, Affiliation.kind, Organization.name, Organization.slug)
+            select(Affiliation.user_id, Affiliation.kind, Organization.name, Organization.slug, Affiliation.verified_by)
             .join(Organization, Organization.id == Affiliation.org_id)
             .where(
                 Affiliation.user_id.in_(user_ids),
@@ -92,8 +92,8 @@ async def verified_roles(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID, l
             .order_by(Affiliation.verified_at)
         )
     ).all()
-    for uid, kind, name, slug in rows:
-        out[uid].append({"kind": kind, "org_name": name, "org_slug": slug})
+    for uid, kind, name, slug, verified_by in rows:
+        out[uid].append({"kind": kind, "org_name": name, "org_slug": slug, "verified_by": verified_by})
     return out
 
 

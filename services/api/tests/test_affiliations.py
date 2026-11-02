@@ -117,7 +117,7 @@ async def test_new_school_waits_for_admin_then_badge_appears(client, browser, ou
 
     badges = await _badges(client, handle)  # logged out sees badges too
     assert badges == [{"kind": "student", "org_name": "Lakeview State University",
-                       "org_slug": "lakeview-state-university"}]
+                       "org_slug": "lakeview-state-university", "verified_by": "school_email"}]
     mine = (await u.get(f"{PREFIX}/affiliations/me")).json()
     assert mine[0]["status"] == "verified" and mine[0]["verified_at"]
 
