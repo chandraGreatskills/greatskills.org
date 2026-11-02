@@ -14,6 +14,8 @@ from app.api.routes import (
     opportunities,
     orgs,
     posts,
+    promos,
+    plus,
     profiles,
     recommendations,
     sim,
@@ -30,6 +32,8 @@ api_router.include_router(connections.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(orgs.router)
 api_router.include_router(posts.router)
+api_router.include_router(promos.router)
+api_router.include_router(plus.router)
 api_router.include_router(messages.router)
 api_router.include_router(notifications.router)
 api_router.include_router(contact.router)

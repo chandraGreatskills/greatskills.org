@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     storage_backend: str = "local"  # local | s3
     upload_dir: str = "./uploads"
     max_upload_mb: int = 10
+    # Videos from approved creators: size, length, and uploads per member per day.
+    max_video_mb: int = 200
+    max_video_seconds: int = 180
+    videos_per_day: int = 5
 
     # Local simulation engine. Empty = its endpoints don't exist. They are
     # never mounted outside development, whatever this holds.

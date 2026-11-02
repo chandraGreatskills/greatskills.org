@@ -83,6 +83,21 @@ app.mount("/uploads/covers", ImagesOnly(directory=_covers), name="covers")
 _logos = Path(settings.upload_dir) / "logos"
 _logos.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads/logos", ImagesOnly(directory=_logos), name="logos")
+class VideosOnly(StaticFiles):
+    # Converted videos and their poster frames only; raw uploads live in a
+    # different, unmounted folder.
+    async def get_response(self, path, scope):
+        if Path(path).suffix.lower() not in {".mp4", ".jpg"}:
+            from starlette.exceptions import HTTPException as StarletteHTTPException
+            raise StarletteHTTPException(status_code=404)
+        return await super().get_response(path, scope)
+
+
+(Path(settings.upload_dir) / "videos").mkdir(parents=True, exist_ok=True)
+app.mount("/uploads/videos", VideosOnly(directory=Path(settings.upload_dir) / "videos"), name="videos")
+for _folder in ("posts", "promos"):
+    (Path(settings.upload_dir) / _folder).mkdir(parents=True, exist_ok=True)
+    app.mount(f"/uploads/{_folder}", ImagesOnly(directory=Path(settings.upload_dir) / _folder), name=_folder)
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 

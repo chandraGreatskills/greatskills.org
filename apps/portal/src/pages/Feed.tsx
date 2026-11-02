@@ -12,6 +12,7 @@ import type { Home, HomeRole, NetworkSummary, Recommendation } from '../lib/type
 import Avatar from '../components/Avatar'
 import DemoBadge from '../components/DemoBadge'
 import { PostList } from '../components/Posts'
+import { PlusOffer, RailPromotions, UpdatesBlock } from '../components/Promo'
 
 const ROLE_LABEL: Record<HomeRole, string> = {
   student: 'Student',
@@ -268,14 +269,17 @@ export default function Feed() {
           </Panel>
         )}
 
+        {(role === 'student' || role === 'seeker') && <PlusOffer />}
+
         <div>
           <h2 className="mb-2 mt-2 px-1 text-sm font-semibold uppercase tracking-wide text-ink/70">Updates from your network</h2>
           <PostList composer empty="No updates yet. Share the first one: a project you finished, an event, or a question." />
         </div>
       </section>
 
-      {/* Right: the right people for this role */}
+      {/* Right: news, the right people for this role, sponsors */}
       <aside className="order-3 space-y-4">
+        <UpdatesBlock />
         {home && home.people_title && (
           <div className="rounded-xl border border-navy/10 bg-white">
             <h2 className="px-4 pt-4 font-semibold text-navy">{home.people_title}</h2>
@@ -298,6 +302,7 @@ export default function Feed() {
             </Link>
           </div>
         )}
+        <RailPromotions />
       </aside>
     </div>
   )

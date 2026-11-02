@@ -11,6 +11,8 @@ import Admin from './pages/Admin'
 import OrgPage from './pages/OrgPage'
 import Messages from './pages/Messages'
 import Notifications from './pages/Notifications'
+import PostPage from './pages/PostPage'
+import Plus from './pages/Plus'
 import Organizations from './pages/Organizations'
 import Feed from './pages/Feed'
 import Members from './pages/Members'
@@ -42,6 +44,8 @@ export default function App() {
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:id" element={<Messages />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/posts/:id" element={<PostPage />} />
+            <Route path="/plus" element={<Plus />} />
             <Route path="/organizations" element={<Organizations />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
