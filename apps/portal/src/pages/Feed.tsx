@@ -11,6 +11,7 @@ import { kindLabel, statusLabel, timeAgo } from '../lib/format'
 import type { Home, HomeRole, NetworkSummary, Recommendation } from '../lib/types'
 import Avatar from '../components/Avatar'
 import DemoBadge from '../components/DemoBadge'
+import { PostList } from '../components/Posts'
 
 const ROLE_LABEL: Record<HomeRole, string> = {
   student: 'Student',
@@ -199,7 +200,7 @@ export default function Feed() {
             title={role === 'employer' ? 'New applicants' : role === 'campus' ? 'Your students\' latest applications' : 'Your applications'}
             to={role === 'student' || role === 'seeker' ? '/opportunities?tab=applied' : undefined}
           >
-            {home.applications.map((a) => (
+            {home.applications.slice(0, 3).map((a) => (
               <li key={a.id}>
                 <Link to={`/opportunities/${a.opportunity_id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-navy-50/60">
                   {a.person ? (
@@ -231,7 +232,7 @@ export default function Feed() {
             }
             to={role === 'employer' ? '/opportunities?tab=posted' : '/opportunities'}
           >
-            {home.openings.map((o) => (
+            {home.openings.slice(0, 3).map((o) => (
               <li key={o.id}>
                 <Link to={`/opportunities/${o.id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-navy-50/60">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-navy-50 text-navy">
@@ -266,6 +267,11 @@ export default function Feed() {
             ))}
           </Panel>
         )}
+
+        <div>
+          <h2 className="mb-2 mt-2 px-1 text-sm font-semibold uppercase tracking-wide text-ink/70">Updates from your network</h2>
+          <PostList composer empty="No updates yet. Share the first one: a project you finished, an event, or a question." />
+        </div>
       </section>
 
       {/* Right: the right people for this role */}

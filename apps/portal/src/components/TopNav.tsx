@@ -51,7 +51,7 @@ export default function TopNav() {
           <img
             src="/assets/GreatSkills_Logo-1.svg"
             alt="Great Skills"
-            className="h-9 w-auto"
+            className="h-11 w-auto"
           />
         </NavLink>
 

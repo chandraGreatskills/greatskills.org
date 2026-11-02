@@ -11,6 +11,7 @@ from app.api.routes import (
     newsletter,
     opportunities,
     orgs,
+    posts,
     profiles,
     recommendations,
     sim,
@@ -26,6 +27,7 @@ api_router.include_router(members.router)
 api_router.include_router(connections.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(orgs.router)
+api_router.include_router(posts.router)
 api_router.include_router(contact.router)
 api_router.include_router(newsletter.router)
 api_router.include_router(affiliations.router)

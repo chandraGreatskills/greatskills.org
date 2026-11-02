@@ -33,7 +33,7 @@ def _aware(dt: datetime) -> datetime:
 
 def _out(row: Affiliation, org: Organization) -> AffiliationOut:
     return AffiliationOut(
-        id=row.id, kind=row.kind, email=row.email, status=row.status, org_name=org.name,
+        id=row.id, kind=row.kind, email=row.email, status=row.status, org_name=org.name, org_slug=org.slug,
         org_status=org.status, verified_at=row.verified_at, created_at=row.created_at,
     )
 

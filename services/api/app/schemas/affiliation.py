@@ -36,6 +36,7 @@ class AffiliationOut(BaseModel):
     email: str
     status: str
     org_name: str
+    org_slug: str = ""
     org_status: str
     verified_at: datetime | None = None
     created_at: datetime

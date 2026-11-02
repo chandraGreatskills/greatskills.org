@@ -9,8 +9,9 @@ import type { OrgPage as Org } from '../lib/types'
 import Avatar from '../components/Avatar'
 import DemoBadge from '../components/DemoBadge'
 import OrgLogo from '../components/OrgLogo'
+import { PostList } from '../components/Posts'
 
-type Tab = 'about' | 'openings' | 'people'
+type Tab = 'about' | 'updates' | 'openings' | 'people'
 
 const COVER: Record<string, string> = {
   academia: 'linear-gradient(100deg, #012652 0%, #0e4f7a 55%, #1f6b3a 100%)',
@@ -99,13 +100,13 @@ export default function OrgPage() {
           </div>
         </div>
         <div className="flex gap-1 border-t border-navy/5 px-4">
-          {(['about', 'openings', 'people'] as Tab[]).map((t) => (
+          {(['about', 'updates', 'openings', 'people'] as Tab[]).filter((t) => t !== 'updates' || me).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold ${tab === t ? 'border-green-deep text-green-deep' : 'border-transparent text-navy/60 hover:text-navy'}`}
             >
-              {t === 'about' ? 'About' : t === 'openings' ? `Openings (${org.openings.length})` : 'People'}
+              {t === 'about' ? 'About' : t === 'updates' ? 'Updates' : t === 'openings' ? `Openings (${org.openings.length})` : 'People'}
             </button>
           ))}
         </div>
@@ -120,6 +121,10 @@ export default function OrgPage() {
             <p className="text-sm text-ink">{org.can_edit ? 'Add a short description so students and partners know who you are.' : 'No description yet.'}</p>
           )}
         </div>
+      )}
+
+      {tab === 'updates' && me && (
+        <PostList query={`org=${org.slug}`} composer={org.can_edit} orgSlug={org.slug} empty={`${org.name} hasn't posted any updates yet.`} />
       )}
 
       {tab === 'openings' && (

@@ -16,6 +16,7 @@ import ImageCropper from '../components/ImageCropper'
 import { readImage } from '../lib/images'
 import { coverStyle } from '../lib/covers'
 import { RecommendationsSection } from '../components/Recommendations'
+import { PostList } from '../components/Posts'
 
 const PREVIEWS = [
   { value: 'public', label: 'Logged-out visitor' },
@@ -305,6 +306,13 @@ export default function MemberProfile() {
           <SkillChips skills={view.skills} />
           {view.skills_truncated && <Hint />}
         </Section>
+      )}
+
+      {view.viewer !== 'public' && view.user_id && !own && (
+        <div className="space-y-3">
+          <h2 className="px-1 text-xl font-semibold text-navy">Activity</h2>
+          <PostList query={`author=${view.user_id}`} empty={`${view.full_name.split(' ')[0]} hasn't posted yet.`} />
+        </div>
       )}
 
       {view.viewer !== 'public' && (

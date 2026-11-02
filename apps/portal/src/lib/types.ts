@@ -194,6 +194,7 @@ export type Affiliation = {
   // email_sent | awaiting_org | verified | rejected | revoked
   status: string
   org_name: string
+  org_slug: string
   org_status: string
   verified_at?: string | null
   created_at: string
@@ -314,4 +315,26 @@ export type OrgPage = OrgCard & {
   student_count: number
   openings: { id: string; title: string; kind: string; location?: string | null; remote: boolean; closes_at?: string | null; created_at: string }[]
   people: { person: MemberMini; kind: 'student' | 'faculty' | 'recruiter' }[]
+}
+
+export type Post = {
+  id: string
+  body: string
+  visibility: 'members' | 'connections'
+  created_at: string
+  author: MemberMini
+  org?: { name: string; slug: string; logo_url?: string | null; org_type: string } | null
+  likes: number
+  liked: boolean
+  comments: number
+  can_delete: boolean
+  is_demo: boolean
+}
+
+export type PostComment = {
+  id: string
+  body: string
+  created_at: string
+  author: MemberMini
+  can_delete: boolean
 }
