@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import TopNav, { BottomNav } from './TopNav'
 import VerifyBanner from './VerifyBanner'
+import { CountsProvider } from '../lib/counts'
 
 export default function Layout() {
   const { me, loading } = useAuth()
@@ -16,6 +17,7 @@ export default function Layout() {
   if (!me) return <Navigate to="/login" replace />
 
   return (
+    <CountsProvider>
     <div className="min-h-screen">
       <TopNav />
       <VerifyBanner />
@@ -24,5 +26,6 @@ export default function Layout() {
       </main>
       <BottomNav />
     </div>
+    </CountsProvider>
   )
 }

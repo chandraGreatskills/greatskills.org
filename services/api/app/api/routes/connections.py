@@ -13,6 +13,7 @@ from app.schemas.social import ConnectionOut, ConnectionRequestIn, NetworkItemOu
 from app.services import demo
 from app.services.affiliations import verified_roles
 from app.services.network import state_of
+from app.services.notify import handle_of, name_of, notify
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -43,6 +44,8 @@ async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: 
     if existing and existing.status == "pending" and existing.addressee_id == current.id:
         # They already asked us: connecting back is the same as accepting.
         existing.status = "accepted"
+        notify(db, existing.requester_id, "connection_accepted", f"{await name_of(db, current.id)} accepted your invitation",
+               f"/in/{await handle_of(db, current.id)}", current.id)
         await db.commit()
         await db.refresh(existing)
         return existing
@@ -52,6 +55,8 @@ async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: 
         existing.requester_id, existing.addressee_id = current.id, payload.addressee_id
         existing.status = "pending"
         existing.message = payload.message
+        notify(db, payload.addressee_id, "connection_request", f"{await name_of(db, current.id)} wants to connect",
+               "/members?tab=invitations", current.id)
         await db.commit()
         await db.refresh(existing)
         return existing
@@ -64,6 +69,8 @@ async def send_request(payload: ConnectionRequestIn, current: VerifiedUser, db: 
         message=payload.message,
     )
     db.add(conn)
+    notify(db, payload.addressee_id, "connection_request", f"{await name_of(db, current.id)} wants to connect",
+           "/members?tab=invitations", current.id)
     await db.commit()
     await db.refresh(conn)
     return conn
@@ -109,6 +116,9 @@ async def respond(
     if not conn or conn.addressee_id != current.id or conn.status != "pending":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
     conn.status = "accepted" if accept else "declined"
+    if accept:
+        notify(db, conn.requester_id, "connection_accepted", f"{await name_of(db, current.id)} accepted your invitation",
+               f"/in/{await handle_of(db, current.id)}", current.id)
     await db.commit()
     await db.refresh(conn)
     return conn
@@ -198,3 +208,34 @@ async def withdraw_or_remove(conn_id: UUID, current: CurrentUser, db: DbSession)
         await db.commit()
         return
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Connection not found")
+
+
+@router.post("/block/{user_id}", status_code=204)
+async def block(user_id: UUID, current: CurrentUser, db: DbSession):
+    """Block a member: no messages, no requests, and each disappears from the
+    other's searches and feed. Replaces any connection between the two."""
+    if user_id == current.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can't block yourself")
+    if await db.get(User, user_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+    rows = list(await db.scalars(select(Connection).where(or_(
+        (Connection.requester_id == current.id) & (Connection.addressee_id == user_id),
+        (Connection.requester_id == user_id) & (Connection.addressee_id == current.id),
+    ))))
+    if any(r.status == "blocked" and r.requester_id == user_id for r in rows):
+        return  # they already blocked you; nothing more to do, and don't reveal it
+    for r in rows:
+        await db.delete(r)
+    await db.flush()
+    db.add(Connection(requester_id=current.id, addressee_id=user_id, status="blocked"))
+    await db.commit()
+
+
+@router.delete("/block/{user_id}", status_code=204)
+async def unblock(user_id: UUID, current: CurrentUser, db: DbSession):
+    row = await db.scalar(select(Connection).where(
+        Connection.requester_id == current.id, Connection.addressee_id == user_id, Connection.status == "blocked"
+    ))
+    if row:
+        await db.delete(row)
+        await db.commit()

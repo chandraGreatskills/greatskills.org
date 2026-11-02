@@ -1,3 +1,4 @@
+import { PlusAdmin, PromotionsAdmin, UpdatesAdmin, VideoCreatorsAdmin } from '../components/AdminTools'
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { ApiError, api } from '../lib/api'
@@ -123,6 +124,7 @@ export default function Admin() {
   const [orgs, setOrgs] = useState<OrgReview[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [section, setSection] = useState<'orgs' | 'promotions' | 'updates' | 'plus' | 'video'>('orgs')
 
   const isAdmin = me?.role === 'admin'
   const load = useCallback(
@@ -154,8 +156,32 @@ export default function Admin() {
     load()
   }
 
+  const SECTIONS = [
+    ['orgs', 'Organizations'],
+    ['promotions', 'Sponsored cards'],
+    ['updates', 'Great Skills updates'],
+    ['plus', 'Achievers Plus'],
+    ['video', 'Video creators'],
+  ] as const
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 border-b border-navy/10 pb-3">
+        {SECTIONS.map(([v, l]) => (
+          <button
+            key={v}
+            onClick={() => setSection(v)}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${section === v ? 'bg-navy text-white' : 'text-navy/70 hover:bg-navy-50'}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+      {section === 'promotions' && <PromotionsAdmin />}
+      {section === 'updates' && <UpdatesAdmin />}
+      {section === 'plus' && <PlusAdmin />}
+      {section === 'video' && <VideoCreatorsAdmin />}
+      {section === 'orgs' && (<>
       <DemoDataCard />
 
       <div>
@@ -222,6 +248,7 @@ export default function Admin() {
           </div>
         ))}
       </div>
+      </>)}
     </div>
   )
 }

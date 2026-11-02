@@ -127,6 +127,9 @@ export type Me = {
   is_verified: boolean
   role: string
   is_synthetic?: boolean
+  is_plus: boolean
+  plus_requested: boolean
+  can_upload_video: boolean
   profile: Profile | null
 }
 
@@ -320,6 +323,11 @@ export type OrgPage = OrgCard & {
 export type Post = {
   id: string
   body: string
+  kind: 'post' | 'article'
+  title?: string | null
+  images: string[]
+  video_url?: string | null
+  video?: PostVideo | null
   visibility: 'members' | 'connections'
   created_at: string
   author: MemberMini
@@ -338,3 +346,56 @@ export type PostComment = {
   author: MemberMini
   can_delete: boolean
 }
+
+export type ChatMessage = {
+  id: string
+  sender_id: string
+  body: string
+  created_at: string
+  unsent: boolean
+  mine: boolean
+  seen: boolean
+  can_unsend: boolean
+}
+
+export type Conversation = {
+  id: string
+  other: MemberMini
+  status: 'active' | 'request' | 'declined'
+  incoming_request: boolean
+  last_message?: string | null
+  last_message_mine: boolean
+  last_message_at?: string | null
+  unread: number
+  starred: boolean
+  archived: boolean
+  opportunity_title?: string | null
+  is_demo: boolean
+}
+
+export type Thread = Conversation & { messages: ChatMessage[]; can_send: boolean; reason?: string | null }
+
+export type AppNotification = {
+  id: string
+  kind: string
+  text: string
+  link: string
+  created_at: string
+  read: boolean
+  actor?: MemberMini | null
+}
+
+export type Promotion = {
+  id: string
+  sponsor: string
+  title: string
+  body: string
+  image_url?: string | null
+  cta: string
+  placement: 'rail' | 'feed'
+  why: string
+}
+
+export type SiteUpdate = { id: string; title: string; body?: string | null; link?: string | null; published: boolean; created_at: string }
+
+export type PostVideo = { id: string; status: 'processing' | 'ready' | 'failed'; url?: string | null; poster?: string | null; error?: string | null }

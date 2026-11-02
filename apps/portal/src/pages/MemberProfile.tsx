@@ -7,6 +7,7 @@ import { completion } from '../lib/completion'
 import { memberLabel } from '../lib/format'
 import { ROLE_LABEL } from '../lib/roles'
 import type { Education, Experience, ProfileView } from '../lib/types'
+import MessageButton from '../components/MessageButton'
 import Avatar from '../components/Avatar'
 import ConnectButton from '../components/ConnectButton'
 import DemoBadge from '../components/DemoBadge'
@@ -256,7 +257,10 @@ export default function MemberProfile() {
             {own ? (
               <OwnActions view={view} onChanged={changed} />
             ) : (
-              <ConnectButton className="w-44" pill member={{ ...view, user_id: view.user_id }} />
+              <>
+                <ConnectButton className="w-44" pill member={{ ...view, user_id: view.user_id }} />
+                {view.user_id && view.viewer !== 'public' && <MessageButton userId={view.user_id} name={view.full_name} />}
+              </>
             )}
           </div>
         </div>

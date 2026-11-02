@@ -7,6 +7,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # System deps for asyncpg / argon2 build wheels are prebuilt; keep image slim.
+# ffmpeg converts uploaded videos to web-friendly MP4 (approved creators only).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -14,6 +14,7 @@ from app.core.security import new_secret, sha256
 from app.models.organization import Affiliation, Organization, OrgDomain
 from app.models.profile import Profile
 from app.schemas.affiliation import AffiliationIn, AffiliationOut, ConfirmAffiliationIn
+from app.services.notify import ROLE_WORD, notify
 from app.services import affiliations as aff
 from app.services.email import send_affiliation_email
 
@@ -180,6 +181,7 @@ async def confirm_affiliation(payload: ConfirmAffiliationIn, request: Request, d
     if org.status == "approved":
         row.status = "verified"
         row.verified_at = now
+        notify(db, row.user_id, "role_verified", f"You're verified as {ROLE_WORD.get(row.kind, row.kind)} at {org.name}", "/profile")
     elif org.status == "pending":
         row.status = "awaiting_org"
     else:

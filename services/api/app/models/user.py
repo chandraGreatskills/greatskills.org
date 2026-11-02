@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,6 +21,17 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     role: Mapped[str] = mapped_column(String(20), default="member")  # member | admin
+    # Achievers Plus, the paid tier. Switched on by an admin until billing exists.
+    is_plus: Mapped[bool] = mapped_column(Boolean, default=False)
+    # On the admin-approved list of members who may upload video files.
+    # Everyone else shares YouTube or Vimeo links.
+    can_upload_video: Mapped[bool] = mapped_column(Boolean, default=False)
+    # When the member asked for Plus; cleared once it's switched on.
+    plus_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def plus_requested(self) -> bool:
+        return self.plus_requested_at is not None
 
     # Demo accounts made by the local simulation engine. They never sign in on
     # production and only show when the admin's demo setting allows it (see

@@ -5,24 +5,52 @@ only. Members can post as an organization they're verified staff at, which
 is how a university or company publishes campus updates. Logged-out
 visitors see no posts."""
 
-from datetime import datetime
+import re
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, or_, select
 
 from app.api.abuse import over_limit
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
 from app.models.connection import Connection
 from app.models.organization import Affiliation, Organization
-from app.models.post import Post, PostComment, PostLike
+from app.core.config import settings
+from app.models.post import Post, PostComment, PostLike, PostVideo
 from app.models.user import User
-from app.schemas.post import CommentIn, CommentOut, PostIn, PostOrg, PostOut
+from app.schemas.post import CommentIn, CommentOut, PostIn, PostOrg, PostOut, VideoOut
 from app.services import demo, network
+from app.services.storage import storage
+from app.services.uploads import image_ext
+from app.services import video as videos
+from app.services.notify import handle_of, name_of, notify
+
+
+def uuid4_hex() -> str:
+    from uuid import uuid4
+
+    return uuid4().hex
+
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 STAFF = ("faculty", "recruiter")
+POST_LIMIT = 3000
+IMAGE_PATH = re.compile(r"^/uploads/posts/[0-9a-f]{32}\.(jpg|png|webp)$")
+
+
+def video_embed(url: str) -> str:
+    """The privacy-friendly embed address for a YouTube or Vimeo link, or
+    a 422 for anything else. Only these two hosts are ever framed."""
+    u = url.strip()
+    m = re.match(r"^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})", u)
+    if m:
+        return f"https://www.youtube-nocookie.com/embed/{m.group(1)}"
+    m = re.match(r"^https?://(?:www\.|player\.)?vimeo\.com/(?:video/)?(\d{6,12})", u)
+    if m:
+        return f"https://player.vimeo.com/video/{m.group(1)}?dnt=1"
+    raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Video links must be from YouTube or Vimeo")
 
 
 def _slow():
@@ -71,13 +99,16 @@ async def _out(db, viewer: User, posts: list[Post]) -> list[PostOut]:
     comments = dict((await db.execute(select(PostComment.post_id, func.count()).where(PostComment.post_id.in_(ids)).group_by(PostComment.post_id))).all())
     liked = set(await db.scalars(select(PostLike.post_id).where(PostLike.post_id.in_(ids), PostLike.user_id == viewer.id)))
     staff = await _staff_orgs(db, viewer.id)
+    vids = {v.id: v for v in await db.scalars(select(PostVideo).where(PostVideo.id.in_({p.video_id for p in posts if p.video_id})))}
     out = []
     for p in posts:
         if p.author_id not in authors:
             continue
         org = orgs.get(p.org_id)
         out.append(PostOut(
-            id=p.id, body=p.body, visibility=p.visibility, created_at=p.created_at, author=authors[p.author_id],
+            id=p.id, body=p.body, kind=p.kind or "post", title=p.title, images=list(p.images or []), video_url=p.video_url,
+            video=_video_out(vids[p.video_id]) if p.video_id in vids else None,
+            visibility=p.visibility, created_at=p.created_at, author=authors[p.author_id],
             org=PostOrg(name=org.name, slug=org.slug, logo_url=org.logo_url, org_type=org.org_type) if org else None,
             likes=likes.get(p.id, 0), liked=p.id in liked, comments=comments.get(p.id, 0),
             can_delete=p.author_id == viewer.id or viewer.role == "admin" or (p.org_id in staff),
@@ -119,6 +150,18 @@ async def feed(
 async def create(payload: PostIn, current: VerifiedUser, db: DbSession):
     if await over_limit("post", str(current.id), 30):
         raise _slow()
+    article = payload.kind == "article"
+    if article and not (payload.title or "").strip():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "An article needs a title")
+    if not article and len(payload.body) > POST_LIMIT:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Posts are limited to {POST_LIMIT} characters; write an article for longer pieces")
+    if any(not IMAGE_PATH.match(i) for i in payload.images):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Upload photos with the photo button first")
+    video = video_embed(payload.video_url) if payload.video_url else None
+    if payload.video_id:
+        v = await db.get(PostVideo, payload.video_id)
+        if v is None or v.owner_id != current.id or v.status == "failed" or video:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Attach one video: an upload or a link")
     org_id = None
     if payload.org_slug:
         org = await db.scalar(select(Organization).where(Organization.slug == payload.org_slug))
@@ -127,6 +170,8 @@ async def create(payload: PostIn, current: VerifiedUser, db: DbSession):
         org_id = org.id
     post = Post(
         author_id=current.id, org_id=org_id, body=payload.body.strip(),
+        kind=payload.kind, title=(payload.title or "").strip() or None if article else None,
+        images=payload.images, video_url=video, video_id=payload.video_id,
         # Organization updates are for everyone; connections-only makes no sense there.
         visibility="members" if org_id else payload.visibility,
         is_synthetic=current.is_synthetic,
@@ -135,6 +180,75 @@ async def create(payload: PostIn, current: VerifiedUser, db: DbSession):
     await db.commit()
     await db.refresh(post)
     return (await _out(db, current, [post]))[0]
+
+
+@router.post("/images", status_code=201)
+async def upload_image(current: VerifiedUser, db: DbSession, file: UploadFile = File(...)):
+    """One photo for a post. The portal resizes it first, which also
+    removes the photo's hidden location data."""
+    if await over_limit("post-image", str(current.id), 60):
+        raise _slow()
+    data = await file.read()
+    return {"url": await storage.save(data, image_ext(data), "posts")}
+
+
+def _video_out(v: PostVideo) -> VideoOut:
+    return VideoOut(id=v.id, status=v.status, url=v.file_url, poster=v.poster_url, error=v.error)
+
+
+@router.post("/videos", response_model=VideoOut, status_code=201)
+async def upload_video(current: VerifiedUser, db: DbSession, background: BackgroundTasks, file: UploadFile = File(...)):
+    """A video file for a post, for members on the approved list of video
+    creators. It's converted in the background; poll GET /posts/videos/{id}."""
+    if not current.can_upload_video:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Video uploads are for approved creators. Share a YouTube or Vimeo link instead.")
+    if not videos.available():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Video uploads aren't available right now")
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    today = await db.scalar(select(func.count()).select_from(PostVideo).where(PostVideo.owner_id == current.id, PostVideo.created_at > since))
+    if (today or 0) >= settings.videos_per_day:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, f"You can upload {settings.videos_per_day} videos a day")
+
+    # Stream to a private file in chunks, stopping at the size limit.
+    limit = settings.max_video_mb * 1024 * 1024
+    dest = videos.raw_path(uuid4_hex())
+    size, head = 0, b""
+    with dest.open("wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            if not head:
+                head = chunk[:16]
+                if not videos.looks_like_video(head):
+                    out.close()
+                    dest.unlink(missing_ok=True)
+                    raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Upload an MP4, MOV or WebM video")
+            size += len(chunk)
+            if size > limit:
+                out.close()
+                dest.unlink(missing_ok=True)
+                raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, f"Videos can be at most {settings.max_video_mb} MB")
+            out.write(chunk)
+    if not head:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That file is empty")
+    row = PostVideo(owner_id=current.id, status="processing")
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    background.add_task(videos.process, row.id, dest)
+    return _video_out(row)
+
+
+@router.get("/videos/{video_id}", response_model=VideoOut)
+async def video_status(video_id: UUID, current: CurrentUser, db: DbSession):
+    v = await db.get(PostVideo, video_id)
+    if v is None or v.owner_id != current.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return _video_out(v)
+
+
+@router.get("/{post_id}", response_model=PostOut)
+async def one(post_id: UUID, current: CurrentUser, db: DbSession):
+    return (await _out(db, current, [await _post(db, current, post_id)]))[0]
 
 
 @router.delete("/{post_id}", status_code=204)
@@ -152,6 +266,8 @@ async def like(post_id: UUID, current: CurrentUser, db: DbSession):
     demo.same_world(current, post.is_synthetic)
     if not await db.scalar(select(PostLike.id).where(PostLike.post_id == post.id, PostLike.user_id == current.id)):
         db.add(PostLike(post_id=post.id, user_id=current.id))
+        notify(db, post.author_id, "post_like", f"{await name_of(db, current.id)} liked your post: \"{post.body[:60]}\"",
+               f"/in/{await handle_of(db, post.author_id)}", current.id)
         await db.commit()
 
 
@@ -189,6 +305,8 @@ async def comment(post_id: UUID, payload: CommentIn, current: VerifiedUser, db: 
     demo.same_world(current, post.is_synthetic)
     row = PostComment(post_id=post.id, author_id=current.id, body=payload.body.strip())
     db.add(row)
+    notify(db, post.author_id, "post_comment", f"{await name_of(db, current.id)} commented on your post: \"{row.body[:60]}\"",
+           f"/in/{await handle_of(db, post.author_id)}", current.id)
     await db.commit()
     await db.refresh(row)
     me = (await network.minis(db, [current.id]))[current.id]
