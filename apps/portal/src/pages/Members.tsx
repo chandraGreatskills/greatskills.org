@@ -4,6 +4,7 @@ import { FiMoreHorizontal, FiSearch } from 'react-icons/fi'
 import { api, ApiError } from '../lib/api'
 import { memberLabel, timeAgo } from '../lib/format'
 import type { NetworkItem, NetworkSummary, ProfileCard } from '../lib/types'
+import MessageButton from '../components/MessageButton'
 import Avatar from '../components/Avatar'
 import MemberCard from '../components/MemberCard'
 import DemoBadge from '../components/DemoBadge'
@@ -261,9 +262,13 @@ function MyNetwork({ tab, onChange }: { tab: Exclude<Tab, 'discover'>; onChange:
                   )}
                   {tab === 'connections' && (
                     <>
-                      <Link to={`/in/${m.handle}`} className={`${PILL} border-navy text-navy hover:bg-navy-50`}>
-                        View profile
-                      </Link>
+                      {m.user_id ? (
+                        <MessageButton userId={m.user_id} name={m.full_name} className={`${PILL} gap-2 border-navy text-navy hover:bg-navy-50`} />
+                      ) : (
+                        <Link to={`/in/${m.handle}`} className={`${PILL} border-navy text-navy hover:bg-navy-50`}>
+                          View profile
+                        </Link>
+                      )}
                       <RowMenu onRemove={() => drop(item, `Remove ${m.full_name} from your connections?`)} />
                     </>
                   )}

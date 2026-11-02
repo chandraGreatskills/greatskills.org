@@ -19,6 +19,7 @@ from app.models.post import Post, PostComment, PostLike
 from app.models.user import User
 from app.schemas.post import CommentIn, CommentOut, PostIn, PostOrg, PostOut
 from app.services import demo, network
+from app.services.notify import handle_of, name_of, notify
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -152,6 +153,8 @@ async def like(post_id: UUID, current: CurrentUser, db: DbSession):
     demo.same_world(current, post.is_synthetic)
     if not await db.scalar(select(PostLike.id).where(PostLike.post_id == post.id, PostLike.user_id == current.id)):
         db.add(PostLike(post_id=post.id, user_id=current.id))
+        notify(db, post.author_id, "post_like", f"{await name_of(db, current.id)} liked your post: \"{post.body[:60]}\"",
+               f"/in/{await handle_of(db, post.author_id)}", current.id)
         await db.commit()
 
 
@@ -189,6 +192,8 @@ async def comment(post_id: UUID, payload: CommentIn, current: VerifiedUser, db: 
     demo.same_world(current, post.is_synthetic)
     row = PostComment(post_id=post.id, author_id=current.id, body=payload.body.strip())
     db.add(row)
+    notify(db, post.author_id, "post_comment", f"{await name_of(db, current.id)} commented on your post: \"{row.body[:60]}\"",
+           f"/in/{await handle_of(db, post.author_id)}", current.id)
     await db.commit()
     await db.refresh(row)
     me = (await network.minis(db, [current.id]))[current.id]

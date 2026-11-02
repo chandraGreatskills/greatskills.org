@@ -9,6 +9,8 @@ import ResetPassword from './pages/ResetPassword'
 import VerifyRole from './pages/VerifyRole'
 import Admin from './pages/Admin'
 import OrgPage from './pages/OrgPage'
+import Messages from './pages/Messages'
+import Notifications from './pages/Notifications'
 import Organizations from './pages/Organizations'
 import Feed from './pages/Feed'
 import Members from './pages/Members'
@@ -37,6 +39,9 @@ export default function App() {
             <Route path="/in/:handle" element={<MemberProfile />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/org/:slug" element={<OrgPage />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages/:id" element={<Messages />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/organizations" element={<Organizations />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

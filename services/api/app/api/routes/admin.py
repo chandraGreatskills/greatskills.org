@@ -15,6 +15,7 @@ from app.models.opportunity import Opportunity
 from app.models.user import User
 from app.schemas.affiliation import AdminAffiliationOut, OrgReviewOut
 from app.schemas.demo import DemoSettingIn, DemoSettingOut
+from app.services.notify import ROLE_WORD, notify
 from app.services import demo
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -64,6 +65,10 @@ async def list_organizations(
 async def approve_organization(org_id: UUID, _: AdminUser, db: DbSession):
     org = await _org(db, org_id)
     org.status = "approved"
+    for uid, kind in (await db.execute(select(Affiliation.user_id, Affiliation.kind).where(
+        Affiliation.org_id == org.id, Affiliation.status == "awaiting_org"
+    ))).all():
+        notify(db, uid, "role_verified", f"{org.name} was approved. You're now verified as {ROLE_WORD.get(kind, kind)} there.", "/profile")
     # Everyone who already proved an address here gets their badge now.
     await db.execute(
         update(Affiliation)

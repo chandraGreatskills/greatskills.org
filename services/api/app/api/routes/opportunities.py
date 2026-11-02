@@ -13,6 +13,7 @@ from app.models.opportunity import Application, Opportunity, SavedOpportunity
 from app.models.organization import Affiliation, Organization
 from app.models.profile import Profile, Resume
 from app.models.user import User
+from app.services.notify import name_of, notify
 from app.services import demo
 from app.services.affiliations import has_verified, verified_roles
 from app.services.storage import storage
@@ -399,6 +400,8 @@ async def apply(opp_id: UUID, payload: ApplicationIn, current: CurrentUser, db: 
         resume_id=payload.resume_id,
     )
     db.add(app_row)
+    notify(db, opp.posted_by, "new_applicant", f"{await name_of(db, current.id)} applied to {opp.title}",
+           f"/opportunities/{opp.id}", current.id)
     await db.commit()
     await db.refresh(app_row)
     return app_row
@@ -447,6 +450,11 @@ async def set_application_status(
 ):
     app_row = await _application(db, current, opp_id, app_id)
     app_row.status = payload.status
+    opp = await db.get(Opportunity, opp_id)
+    word = {"reviewed": "was viewed", "shortlisted": "was shortlisted", "accepted": "was accepted",
+            "rejected": "wasn't taken forward"}.get(payload.status, "was updated")
+    notify(db, app_row.applicant_id, "application_status", f"Your application to {opp.title} {word}",
+           f"/opportunities/{opp_id}", current.id)
     await db.commit()
     await db.refresh(app_row)
     return app_row

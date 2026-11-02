@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.recommendation import MyRecommendationsOut, RecommendationIn
 from app.services import network
 from app.services.recommendations import listed
+from app.services.notify import handle_of, name_of, notify
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
@@ -57,6 +58,8 @@ async def write(payload: RecommendationIn, current: VerifiedUser, db: DbSession)
     row.body = payload.body.strip()
     row.status = "pending"
     row.shown_at = None
+    notify(db, payload.recipient_id, "recommendation", f"{await name_of(db, current.id)} wrote you a recommendation. Review it before it appears on your profile.",
+           "/profile", current.id)
     await db.commit()
     return {"id": str(row.id), "status": row.status}
 
@@ -68,6 +71,9 @@ async def respond(rec_id: UUID, current: CurrentUser, db: DbSession, show: bool 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     row.status = "shown" if show else "hidden"
     row.shown_at = datetime.now(timezone.utc) if show else None
+    if show:
+        notify(db, row.author_id, "recommendation_shown", f"{await name_of(db, current.id)} added your recommendation to their profile",
+               f"/in/{await handle_of(db, current.id)}", current.id)
     await db.commit()
     return {"id": str(row.id), "status": row.status}
 

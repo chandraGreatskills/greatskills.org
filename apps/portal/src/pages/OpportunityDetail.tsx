@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { closesLabel, kindLabel, placeLabel, statusLabel, timeAgo } from '../lib/format'
 import type { Applicant, Opportunity } from '../lib/types'
 import ApplyDialog from '../components/ApplyDialog'
+import MessageButton from '../components/MessageButton'
 import Avatar from '../components/Avatar'
 import DemoBadge from '../components/DemoBadge'
 import OpportunityForm from '../components/OpportunityForm'
@@ -213,6 +214,9 @@ function Applicants({ opp }: { opp: Opportunity }) {
                   >
                     <FiFileText className="h-4 w-4" /> Resume
                   </button>
+                )}
+                {a.member.user_id && (
+                  <MessageButton userId={a.member.user_id} name={a.member.full_name} opportunityId={opp.id} className="btn-ghost gap-2 px-3 py-2" />
                 )}
                 <select
                   className="rounded-lg border border-navy/10 bg-white px-2 py-2 text-sm text-navy"
