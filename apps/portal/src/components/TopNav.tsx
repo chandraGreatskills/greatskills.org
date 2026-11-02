@@ -163,7 +163,8 @@ export default function TopNav() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <NavLink to="/profile" title="My profile" className="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-green/30">
+          {/* Opens the member's own page as others see it; editing is a button there. */}
+          <NavLink to={me?.profile?.handle ? `/in/${me.profile.handle}` : '/profile'} title="My profile" className="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-green/30">
             {me?.profile ? <Avatar name={me.profile.full_name} url={me.profile.avatar_url} size="sm" /> : <FiUser className="h-5 w-5" />}
           </NavLink>
           <button
